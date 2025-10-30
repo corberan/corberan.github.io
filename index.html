@@ -100,6 +100,58 @@ canvas.emscripten { border: 0px none; background-color: black; }
   font-family: 'Lucida Console', Monaco, monospace;
   outline: none;
 }
+
+/* ========== 新增代码开始: 虚拟按键区样式 ========== */
+#virtual-keypad {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    padding: 15px 10px;
+    background-color: rgba(50, 50, 50, 0.8);
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    box-sizing: border-box;
+    -webkit-user-select: none; /* 防止点击时选中文字 */
+    user-select: none;
+    z-index: 100; /* 确保在最上层 */
+}
+.dpad-layout {
+    display: grid;
+    grid-template-columns: repeat(3, 60px);
+    grid-template-rows: repeat(2, 60px);
+    gap: 5px;
+}
+.actions-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.keypad-btn {
+    width: 60px;
+    height: 60px;
+    font-size: 20px;
+    font-weight: bold;
+    color: #fff;
+    background-color: #555;
+    border: 2px solid #888;
+    border-radius: 12px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    touch-action: manipulation; /* 优化移动端触摸体验 */
+}
+.keypad-btn.wide {
+    width: 120px;
+    height: 55px;
+}
+.keypad-btn:active {
+    background-color: #777;
+    border-color: #aaa;
+}
+/* ========== 新增代码结束: 虚拟按键区样式 ========== */
+
 </style>
   </head>
   <body>
@@ -196,5 +248,78 @@ canvas.emscripten { border: 0px none; background-color: black; }
       };
     </script>
     <script async type="text/javascript" src="index.js"></script>
+    <!-- ========== 新增代码开始: 虚拟按键区 HTML ========== -->
+<div id="virtual-keypad">
+  <div class="dpad-layout">
+    <div style="grid-area: 1 / 2;">
+      <button class="keypad-btn" data-key="ArrowUp" data-code="ArrowUp" data-keycode="38">▲</button>
+    </div>
+    <div style="grid-area: 2 / 1;">
+      <button class="keypad-btn" data-key="ArrowLeft" data-code="ArrowLeft" data-keycode="37">◄</button>
+    </div>
+    <div style="grid-area: 2 / 2;">
+      <button class="keypad-btn" data-key="ArrowDown" data-code="ArrowDown" data-keycode="40">▼</button>
+    </div>
+    <div style="grid-area: 2 / 3;">
+      <button class="keypad-btn" data-key="ArrowRight" data-code="ArrowRight" data-keycode="39">►</button>
+    </div>
+  </div>
+  <div class="actions-layout">
+    <button class="keypad-btn wide" data-key="Escape" data-code="Escape" data-keycode="27">ESC</button>
+    <button class="keypad-btn wide" data-key="Enter" data-code="Enter" data-keycode="13">ENTER</button>
+  </div>
+</div>
+<!-- ========== 新增代码结束: 虚拟按键区 HTML ========== -->
+
+<!-- ========== 新增代码开始: 虚拟按键逻辑 ========== -->
+<script>
+  (function() {
+    const keypad = document.getElementById('virtual-keypad');
+    const canvas = document.getElementById('canvas');
+
+    if (!keypad || !canvas) {
+      console.error('Virtual keypad or canvas element not found.');
+      return;
+    }
+
+    // 统一处理按键事件的函数
+    function dispatchKey(key, code, keyCode) {
+      const eventOptions = {
+        key: key,
+        code: code,
+        keyCode: keyCode,
+        which: keyCode, // 兼容旧版
+        bubbles: true,
+        cancelable: true
+      };
+
+      // 模拟键盘按下和弹起两个事件，确保逻辑完整
+      canvas.dispatchEvent(new KeyboardEvent('keydown', eventOptions));
+      canvas.dispatchEvent(new KeyboardEvent('keyup', eventOptions));
+    }
+
+    // 使用事件委托来处理所有按钮的点击
+    keypad.addEventListener('click', function(event) {
+      const button = event.target.closest('.keypad-btn');
+      if (button && button.dataset.key) {
+        const { key, code, keycode } = button.dataset;
+        if (key && code && keycode) {
+          dispatchKey(key, code, parseInt(keycode, 10));
+          
+          // 点击按钮后，让canvas重新获得焦点，以便能继续接收真实键盘事件
+          canvas.focus(); 
+        }
+      }
+    });
+
+    // 阻止在按键区上滑动导致页面滚动（移动端体验优化）
+    keypad.addEventListener('touchmove', function(event) {
+      event.preventDefault();
+    }, { passive: false });
+
+  })();
+</script>
+<!-- ========== 新增代码结束: 虚拟按键逻辑 ========== -->
+
   </body>
 </html>
