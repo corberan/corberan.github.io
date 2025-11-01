@@ -3,11 +3,13 @@
   <head>
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Emscripten-Generated Code</title>
-    <style>body {
+    <style>
+body {
   font-family: arial;
   margin: 0;
-  padding: none;
+  padding: 0;
 }
 
 .emscripten { padding-right: 0; margin-left: auto; margin-right: auto; display: block; }
@@ -85,89 +87,202 @@ canvas.emscripten { border: 0px none; background-color: black; }
   margin-right: 20px;
 }
 
-#output {
-  width: 100%;
-  height: 200px;
+/* Canvas容器样式 */
+#canvas-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
   margin: 0 auto;
-  margin-top: 100px;
-  border-left: 0px;
-  border-right: 0px;
-  padding-left: 0px;
-  padding-right: 0px;
-  display: block;
+  min-height: 400px;
+}
+
+.emscripten_border {
+  display: inline-block;
+  transform-origin: center center;
+  transition: transform 0.1s;
+}
+
+/* 缩放控制条样式 */
+#zoom-control {
+  width: 90%;
+  max-width: 600px;
+  margin: 10px auto;
+  text-align: center;
+}
+
+#zoom-slider {
+  width: 100%;
+  margin: 5px 0;
+}
+
+#zoom-label {
+  font-size: 14px;
+  color: #333;
+}
+
+/* 虚拟键盘样式 */
+#virtual-keyboard {
+  margin: 20px auto;
+  padding: 20px;
+  background-color: #f0f0f0;
+  border-radius: 10px;
+  max-width: 600px;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+}
+
+.keyboard-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0;
+}
+
+.key-button {
+  background: linear-gradient(to bottom, #ffffff, #e0e0e0);
+  border: 2px solid #999;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  color: #333;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  transition: all 0.1s;
+  touch-action: none;
+}
+
+.key-button:active {
+  background: linear-gradient(to bottom, #d0d0d0, #b0b0b0);
+  box-shadow: 0 2px 3px rgba(0,0,0,0.2);
+  transform: translateY(2px);
+}
+
+.key-button.pressed {
+  background: linear-gradient(to bottom, #b0b0b0, #909090);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+}
+
+#key-esc {
+  width: 80px;
+  height: 50px;
+}
+
+/* 方向键容器 */
+.arrow-keys {
+  display: grid;
+  grid-template-columns: repeat(3, 60px);
+  grid-template-rows: repeat(3, 50px);
+  gap: 5px;
+  margin: 0 10px;
+}
+
+#key-up {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+#key-left {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+#key-down {
+  grid-column: 2;
+  grid-row: 3;
+}
+
+#key-right {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+.arrow-key {
+  width: 60px;
+  height: 50px;
+  font-size: 20px;
+}
+
+#key-enter {
+  width: 100px;
+  height: 50px;
+}
+
+/* 日志区样式 */
+#output-container {
+  width: 95%;
+  margin: 10px auto;
+  background-color: black;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+#output-header {
+  background-color: #333;
+  color: white;
+  padding: 10px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+#output-toggle {
+  font-size: 12px;
+  color: #aaa;
+}
+
+#output {
+  width: calc(100% - 20px);
+  height: 200px;
+  margin: 0;
+  padding: 10px;
+  display: none;
   background-color: black;
   color: white;
   font-family: 'Lucida Console', Monaco, monospace;
   outline: none;
-  box-sizing: border-box;
+  border: none;
+  resize: none;
 }
 
-#game-wrapper {
-    width: -moz-fit-content;
-    width: fit-content;
+#output.expanded {
+  display: block;
 }
 
-/* -- 修改 --: 调整虚拟键盘布局以支持十字键 */
-#virtual-keyboard {
-    display: flex;
-    justify-content: space-around;
-    align-items: center; /* 垂直居中对齐 */
-    padding: 10px 0;
-    gap: 15px; /* 按钮和十字键区域的间距 */
-}
-
-/* -- 新增 --: 十字键的网格容器 */
-#arrow-pad {
-    display: grid;
-    /* 定义三行三列，每格大小45px */
-    grid-template-columns: repeat(3, 45px);
-    grid-template-rows: repeat(3, 45px);
-    gap: 2px; /* 网格间隙 */
-}
-
-.key-btn {
-    font-family: Arial, sans-serif;
-    font-weight: bold;
-    font-size: 14px;
-    padding: 8px 12px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    background-color: #f0f0f0;
-    cursor: pointer;
-    box-sizing: border-box;
+/* 响应式设计 */
+@media (max-width: 768px) {
+  #controls {
+    float: none;
+    display: block;
+    margin: 10px auto;
     text-align: center;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
-}
-
-/* -- 新增 --: 十字键中按钮的特定样式 */
-.arrow-key {
-    width: 45px;
-    height: 45px;
-    padding: 0;
-    font-size: 20px;
-    /* 使用 flex 居中箭头符号 */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-/* -- 新增 --: 使用 grid-area 或 grid-column/row 来定位每个按键 */
-#key-up    { grid-column: 2; grid-row: 1; }
-#key-left  { grid-column: 1; grid-row: 2; }
-#key-right { grid-column: 3; grid-row: 2; }
-#key-down  { grid-column: 2; grid-row: 3; }
-
-
-.key-btn:hover {
-    background-color: #e0e0e0;
-}
-
-.key-btn:active {
-    background-color: #ccc;
-    transform: translateY(1px);
+  }
+  
+  #controls span {
+    display: block;
+    margin: 5px 0;
+  }
+  
+  .key-button {
+    font-size: 14px;
+  }
+  
+  .arrow-keys {
+    grid-template-columns: repeat(3, 50px);
+    grid-template-rows: repeat(3, 40px);
+  }
+  
+  .arrow-key {
+    width: 50px;
+    height: 40px;
+    font-size: 16px;
+  }
+  
+  #key-esc, #key-enter {
+    height: 40px;
+  }
 }
 </style>
   </head>
@@ -175,38 +290,44 @@ canvas.emscripten { border: 0px none; background-color: black; }
     <div class="spinner" id='spinner'></div>
     <div class="emscripten" id="status">Downloading...</div>
 
-    <!-- <span id='controls'>
-      <span><input type="checkbox" id="resize">Resize canvas</span>
-      <span><input type="checkbox" id="pointerLock" checked>Lock/hide mouse pointer &nbsp;&nbsp;&nbsp;</span>
-      <span><input type="button" value="Fullscreen" onclick="Module.requestFullscreen(document.getElementById('pointerLock').checked, 
-                                                                                document.getElementById('resize').checked)">
-      </span>
-    </span> -->
-
     <div class="emscripten">
       <progress value="0" max="100" id="progress" hidden=1></progress>
     </div>
 
-    <div id="game-wrapper" class="emscripten">
-        <div class="emscripten_border">
-          <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()" tabindex=-1></canvas>
-        </div>
+    <!-- 缩放控制 -->
+    <div id="zoom-control">
+      <label id="zoom-label">Canvas Scale: 100%</label>
+      <input type="range" id="zoom-slider" min="25" max="200" value="100" step="5">
+    </div>
 
-        <!-- -- 修改 --: 调整键盘HTML结构以实现菱形布局 -->
-        <div id="virtual-keyboard">
-          <button class="key-btn" data-key="Escape" data-code="Escape">ESC</button>
-          
-          <div id="arrow-pad">
-            <button class="key-btn arrow-key" id="key-up" data-key="ArrowUp" data-code="ArrowUp">&uarr;</button>
-            <button class="key-btn arrow-key" id="key-left" data-key="ArrowLeft" data-code="ArrowLeft">&larr;</button>
-            <button class="key-btn arrow-key" id="key-down" data-key="ArrowDown" data-code="ArrowDown">&darr;</button>
-            <button class="key-btn arrow-key" id="key-right" data-key="ArrowRight" data-code="ArrowRight">&rarr;</button>
-          </div>
-          
-          <button class="key-btn" data-key="Enter" data-code="Enter">ENTER</button>
-        </div>
+    <!-- Canvas容器 -->
+    <div id="canvas-container">
+      <div class="emscripten_border" id="canvas-wrapper">
+        <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()" tabindex=-1></canvas>
+      </div>
+    </div>
 
-        <textarea id="output" rows="8"></textarea>
+    <!-- 虚拟键盘 -->
+    <div id="virtual-keyboard">
+      <div class="keyboard-row">
+        <button class="key-button" id="key-esc">ESC</button>
+        <div class="arrow-keys">
+          <button class="key-button arrow-key" id="key-up">▲</button>
+          <button class="key-button arrow-key" id="key-left">◄</button>
+          <button class="key-button arrow-key" id="key-down">▼</button>
+          <button class="key-button arrow-key" id="key-right">►</button>
+        </div>
+        <button class="key-button" id="key-enter">ENTER</button>
+      </div>
+    </div>
+
+    <!-- 日志输出区 -->
+    <div id="output-container">
+      <div id="output-header">
+        <span>Console Output</span>
+        <span id="output-toggle">▼ Click to expand</span>
+      </div>
+      <textarea id="output" rows="8"></textarea>
     </div>
 
     <script type='text/javascript'>
@@ -217,6 +338,194 @@ canvas.emscripten { border: 0px none; background-color: black; }
       var outputElement = document.getElementById('output');
       if (outputElement) outputElement.value = ''; // clear browser cache
 
+      // 缩放功能
+      const zoomSlider = document.getElementById('zoom-slider');
+      const zoomLabel = document.getElementById('zoom-label');
+      const canvasWrapper = document.getElementById('canvas-wrapper');
+      const canvasContainer = document.getElementById('canvas-container');
+
+      function updateCanvasScale() {
+        const scale = zoomSlider.value / 100;
+        canvasWrapper.style.transform = `scale(${scale})`;
+        zoomLabel.textContent = `Canvas Scale: ${zoomSlider.value}%`;
+        
+        // 根据缩放比例动态调整容器高度
+        const canvasHeight = canvasElement.height || 600; // 默认高度
+        const scaledHeight = canvasHeight * scale;
+        canvasContainer.style.minHeight = scaledHeight + 'px';
+      }
+
+      zoomSlider.addEventListener('input', updateCanvasScale);
+
+      // 监听canvas尺寸变化（如果canvas动态改变大小）
+      const resizeObserver = new ResizeObserver(() => {
+        updateCanvasScale();
+      });
+      resizeObserver.observe(canvasElement);
+
+      // 日志区展开/收起
+      const outputHeader = document.getElementById('output-header');
+      const outputToggle = document.getElementById('output-toggle');
+
+      outputHeader.addEventListener('click', function() {
+        outputElement.classList.toggle('expanded');
+        if (outputElement.classList.contains('expanded')) {
+          outputToggle.textContent = '▲ Click to collapse';
+        } else {
+          outputToggle.textContent = '▼ Click to expand';
+        }
+      });
+
+      // 虚拟键盘功能
+      const keyMapping = {
+        'key-esc': { key: 'Escape', keyCode: 27, code: 'Escape' },
+        'key-up': { key: 'ArrowUp', keyCode: 38, code: 'ArrowUp' },
+        'key-down': { key: 'ArrowDown', keyCode: 40, code: 'ArrowDown' },
+        'key-left': { key: 'ArrowLeft', keyCode: 37, code: 'ArrowLeft' },
+        'key-right': { key: 'ArrowRight', keyCode: 39, code: 'ArrowRight' },
+        'key-enter': { key: 'Enter', keyCode: 13, code: 'Enter' }
+      };
+
+      let keyRepeatIntervals = {};
+      let keyRepeatTimeouts = {};
+
+      function dispatchKeyEvent(eventType, keyInfo) {
+        // 为document派发事件
+        const event1 = new KeyboardEvent(eventType, {
+          key: keyInfo.key,
+          keyCode: keyInfo.keyCode,
+          code: keyInfo.code,
+          which: keyInfo.keyCode,
+          bubbles: true,
+          cancelable: true
+        });
+        document.dispatchEvent(event1);
+
+        // 为canvas派发事件
+        const event2 = new KeyboardEvent(eventType, {
+          key: keyInfo.key,
+          keyCode: keyInfo.keyCode,
+          code: keyInfo.code,
+          which: keyInfo.keyCode,
+          bubbles: true,
+          cancelable: true
+        });
+        canvasElement.dispatchEvent(event2);
+      }
+
+      function startKeyPress(buttonId, keyInfo) {
+        const button = document.getElementById(buttonId);
+        button.classList.add('pressed');
+        
+        // 立即触发一次keydown
+        dispatchKeyEvent('keydown', keyInfo);
+        
+        // 如果是方向键，设置长按重复
+        if (buttonId.startsWith('key-up') || buttonId.startsWith('key-down') || 
+            buttonId.startsWith('key-left') || buttonId.startsWith('key-right')) {
+          
+          // 延迟后开始重复（模拟系统键盘行为）
+          keyRepeatTimeouts[buttonId] = setTimeout(() => {
+            // 检查按钮是否仍然处于按下状态
+            if (keyRepeatIntervals[buttonId] === 'waiting') {
+              keyRepeatIntervals[buttonId] = setInterval(() => {
+                dispatchKeyEvent('keydown', keyInfo);
+              }, 80); // 每80ms触发一次
+            }
+          }, 300); // 300ms后开始重复
+          
+          keyRepeatIntervals[buttonId] = 'waiting'; // 标记为等待重复状态
+        }
+      }
+
+      function endKeyPress(buttonId, keyInfo) {
+        const button = document.getElementById(buttonId);
+        button.classList.remove('pressed');
+        
+        // 清除延迟触发的timeout
+        if (keyRepeatTimeouts[buttonId]) {
+          clearTimeout(keyRepeatTimeouts[buttonId]);
+          delete keyRepeatTimeouts[buttonId];
+        }
+        
+        // 清除重复触发的interval
+        if (keyRepeatIntervals[buttonId] && keyRepeatIntervals[buttonId] !== 'waiting') {
+          clearInterval(keyRepeatIntervals[buttonId]);
+        }
+        delete keyRepeatIntervals[buttonId];
+        
+        // 触发keyup事件
+        dispatchKeyEvent('keyup', keyInfo);
+      }
+
+      // 为每个按键绑定事件
+      Object.keys(keyMapping).forEach(buttonId => {
+        const button = document.getElementById(buttonId);
+        const keyInfo = keyMapping[buttonId];
+
+        // 鼠标事件
+        button.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          startKeyPress(buttonId, keyInfo);
+        });
+
+        button.addEventListener('mouseup', (e) => {
+          e.preventDefault();
+          endKeyPress(buttonId, keyInfo);
+        });
+
+        button.addEventListener('mouseleave', (e) => {
+          // 只有在按钮被按下的情况下才触发结束
+          if (keyRepeatIntervals[buttonId]) {
+            endKeyPress(buttonId, keyInfo);
+          }
+        });
+
+        // 触摸事件（移动端）
+        button.addEventListener('touchstart', (e) => {
+          e.preventDefault();
+          startKeyPress(buttonId, keyInfo);
+        });
+
+        button.addEventListener('touchend', (e) => {
+          e.preventDefault();
+          endKeyPress(buttonId, keyInfo);
+        });
+
+        button.addEventListener('touchcancel', (e) => {
+          e.preventDefault();
+          // 只有在按钮被按下的情况下才触发结束
+          if (keyRepeatIntervals[buttonId]) {
+            endKeyPress(buttonId, keyInfo);
+          }
+        });
+      });
+
+      // 全局鼠标/触摸释放事件，确保在任何情况下都能停止重复
+      document.addEventListener('mouseup', () => {
+        Object.keys(keyRepeatIntervals).forEach(buttonId => {
+          if (keyRepeatIntervals[buttonId]) {
+            endKeyPress(buttonId, keyMapping[buttonId]);
+          }
+        });
+      });
+
+      document.addEventListener('touchend', () => {
+        Object.keys(keyRepeatIntervals).forEach(buttonId => {
+          if (keyRepeatIntervals[buttonId]) {
+            endKeyPress(buttonId, keyMapping[buttonId]);
+          }
+        });
+      });
+
+      // 防止页面滚动
+      document.getElementById('virtual-keyboard').addEventListener('touchmove', (e) => {
+        e.preventDefault();
+      }, { passive: false });
+
+      // As a default initial behavior, pop up an alert when webgl context is lost. To make your
+      // application robust, you may want to override this behavior before shipping!
+      // See http://www.khronos.org/registry/webgl/specs/latest/1.0/#5.15.2
       canvasElement.addEventListener('webglcontextlost', (e) => {
         alert('WebGL context lost. You will need to reload the page.');
         e.preventDefault();
@@ -268,45 +577,6 @@ canvas.emscripten { border: 0px none; background-color: black; }
           if (text) console.error('[post-exception status] ' + text);
         };
       };
-
-      // 虚拟键盘事件处理逻辑 (无需改动)
-      (function() {
-        function simulateKeyPress(key, code) {
-          const downEvent = new KeyboardEvent('keydown', {
-            key: key,
-            code: code,
-            bubbles: true,
-            cancelable: true
-          });
-          canvasElement.dispatchEvent(downEvent);
-
-          setTimeout(() => {
-            const upEvent = new KeyboardEvent('keyup', {
-              key: key,
-              code: code,
-              bubbles: true,
-              cancelable: true
-            });
-            canvasElement.dispatchEvent(upEvent);
-          }, 50);
-        }
-
-        const keyboardArea = document.getElementById('virtual-keyboard');
-        if (keyboardArea) {
-          keyboardArea.addEventListener('click', (e) => {
-            const button = e.target.closest('.key-btn');
-            if (!button) return;
-            
-            const key = button.dataset.key;
-            const code = button.dataset.code;
-
-            if (key && code) {
-              simulateKeyPress(key, code);
-              canvasElement.focus();
-            }
-          });
-        }
-      })();
     </script>
     <script async type="text/javascript" src="index.js"></script>
   </body>
