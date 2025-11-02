@@ -1,1002 +1,1076 @@
 <!doctype html>
 <html lang="en-us">
-  <head>
+<head>
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Emscripten-Generated Code</title>
+    <title>WEBASM VM</title>
     <style>
-body {
-  font-family: arial;
-  margin: 0;
-  padding: 0;
-}
+        * {
+            box-sizing: border-box;
+        }
 
-.emscripten { padding-right: 0; margin-left: auto; margin-right: auto; display: block; }
-div.emscripten { text-align: center; }
-div.emscripten_border { border: 1px solid black; }
-/* the canvas *must not* have any border or padding, or mouse coords will be wrong */
-canvas.emscripten { border: 0px none; background-color: black; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
 
-#emscripten_logo {
-  display: inline-block;
-  margin: 0;
-  padding: 6px;
-  width: 265px;
-}
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
 
-.spinner {
-  height: 30px;
-  width: 30px;
-  margin: 0;
-  margin-top: 20px;
-  margin-left: 20px;
-  display: inline-block;
-  vertical-align: top;
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            text-align: center;
+        }
 
-  -webkit-animation: rotation .8s linear infinite;
-  -moz-animation: rotation .8s linear infinite;
-  -o-animation: rotation .8s linear infinite;
-  animation: rotation 0.8s linear infinite;
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
 
-  border-left: 5px solid rgb(235, 235, 235);
-  border-right: 5px solid rgb(235, 235, 235);
-  border-bottom: 5px solid rgb(235, 235, 235);
-  border-top: 5px solid rgb(120, 120, 120);
+        .main-content {
+            display: flex;
+            gap: 20px;
+            padding: 20px;
+        }
 
-  border-radius: 100%;
-  background-color: rgb(189, 215, 46);
-}
+        .left-panel {
+            flex: 1;
+            min-width: 300px;
+        }
 
-@-webkit-keyframes rotation {
-  from {-webkit-transform: rotate(0deg);}
-  to {-webkit-transform: rotate(360deg);}
-}
-@-moz-keyframes rotation {
-  from {-moz-transform: rotate(0deg);}
-  to {-moz-transform: rotate(360deg);}
-}
-@-o-keyframes rotation {
-  from {-o-transform: rotate(0deg);}
-  to {-o-transform: rotate(360deg);}
-}
-@keyframes rotation {
-  from {transform: rotate(0deg);}
-  to {transform: rotate(360deg);}
-}
+        .right-panel {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
 
-#status {
-  display: inline-block;
-  vertical-align: top;
-  margin-top: 30px;
-  margin-left: 20px;
-  font-weight: bold;
-  color: rgb(120, 120, 120);
-}
+        /* 控制面板样式 */
+        #control-panel {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
 
-#progress {
-  height: 20px;
-  width: 300px;
-}
+        .control-group {
+            margin-bottom: 15px;
+        }
 
-#controls {
-  display: inline-block;
-  float: right;
-  vertical-align: top;
-  margin-top: 30px;
-  margin-right: 20px;
-}
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
 
-/* Canvas容器样式 */
-#canvas-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin: 0 auto;
-  min-height: 400px;
-}
+        .control-group input[type="text"],
+        .control-group input[type="number"] {
+            width: 100%;
+            padding: 8px 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
 
-.emscripten_border {
-  display: inline-block;
-  transform-origin: center center;
-  transition: transform 0.1s;
-}
+        .control-group input[type="text"]:focus,
+        .control-group input[type="number"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
 
-/* 缩放控制条样式 */
-#zoom-control {
-  width: 90%;
-  max-width: 600px;
-  margin: 10px auto;
-  text-align: center;
-}
+        .control-group input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+        }
 
-#zoom-slider {
-  width: 100%;
-  margin: 5px 0;
-}
+        .control-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
 
-#zoom-label {
-  font-size: 14px;
-  color: #333;
-}
+        .control-group input[type="range"]::-webkit-slider-thumb:hover {
+            background: #764ba2;
+        }
 
-/* 虚拟键盘样式 */
-#virtual-keyboard {
-  margin: 20px auto;
-  padding: 20px;
-  background-color: #f0f0f0;
-  border-radius: 10px;
-  max-width: 600px;
-  user-select: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-}
+        .control-group button {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
 
-.keyboard-row {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 10px;
-  margin: 10px 0;
-}
+        .control-group button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
 
-.key-button {
-  background: linear-gradient(to bottom, #ffffff, #e0e0e0);
-  border: 2px solid #999;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: bold;
-  cursor: pointer;
-  color: #333;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-  transition: all 0.1s;
-  touch-action: none;
-}
+        .control-group button:active {
+            transform: translateY(0);
+        }
 
-.key-button:active {
-  background: linear-gradient(to bottom, #d0d0d0, #b0b0b0);
-  box-shadow: 0 2px 3px rgba(0,0,0,0.2);
-  transform: translateY(2px);
-}
+        .control-group button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
 
-.key-button.pressed {
-  background: linear-gradient(to bottom, #b0b0b0, #909090);
-  box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
-}
+        /* Canvas容器 */
+        #canvas-container {
+            background: #000;
+            border-radius: 10px;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 320px;
+            position: relative;
+        }
 
-#key-esc {
-  width: 80px;
-  height: 50px;
-}
+        #canvas {
+            display: block;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
 
-/* 方向键容器 */
-.arrow-keys {
-  display: grid;
-  grid-template-columns: repeat(3, 60px);
-  grid-template-rows: repeat(3, 50px);
-  gap: 5px;
-  margin: 0 10px;
-}
+        /* 缩放控制 */
+        #zoom-control {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
 
-#key-up {
-  grid-column: 2;
-  grid-row: 1;
-}
+        #zoom-control label {
+            font-weight: 600;
+            color: #333;
+            white-space: nowrap;
+        }
 
-#key-left {
-  grid-column: 1;
-  grid-row: 2;
-}
+        #zoom-slider {
+            flex: 1;
+            height: 6px;
+            border-radius: 3px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+        }
 
-#key-down {
-  grid-column: 2;
-  grid-row: 3;
-}
+        #zoom-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+        }
 
-#key-right {
-  grid-column: 3;
-  grid-row: 2;
-}
+        #zoom-value {
+            font-weight: 600;
+            color: #667eea;
+            min-width: 45px;
+            text-align: right;
+        }
 
-.arrow-key {
-  width: 60px;
-  height: 50px;
-  font-size: 20px;
-}
+        /* 虚拟键盘样式 */
+        #keyboard-container {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+        }
 
-#key-enter {
-  width: 100px;
-  height: 50px;
-}
+        .keyboard-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
 
-/* 日志区样式 */
-#output-container {
-  width: 95%;
-  margin: 10px auto;
-  background-color: black;
-  border-radius: 5px;
-  overflow: hidden;
-}
+        .keyboard-tab {
+            flex: 1;
+            padding: 10px;
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            cursor: pointer;
+            text-align: center;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
 
-#output-header {
-  background-color: #333;
-  color: white;
-  padding: 10px;
-  cursor: pointer;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
+        .keyboard-tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: #667eea;
+        }
 
-#output-toggle {
-  font-size: 12px;
-  color: #aaa;
-}
+        .keyboard {
+            display: none;
+        }
 
-#output {
-  width: calc(100% - 20px);
-  height: 200px;
-  margin: 0;
-  padding: 10px;
-  display: none;
-  background-color: black;
-  color: white;
-  font-family: 'Lucida Console', Monaco, monospace;
-  outline: none;
-  border: none;
-  resize: none;
-}
+        .keyboard.active {
+            display: block;
+        }
 
-#output.expanded {
-  display: block;
-}
+        .keyboard-row {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 5px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
 
-/* 响应式设计 */
-@media (max-width: 768px) {
-  #controls {
-    float: none;
-    display: block;
-    margin: 10px auto;
-    text-align: center;
-  }
-  
-  #controls span {
-    display: block;
-    margin: 5px 0;
-  }
-  
-  .key-button {
-    font-size: 14px;
-  }
-  
-  .arrow-keys {
-    grid-template-columns: repeat(3, 50px);
-    grid-template-rows: repeat(3, 40px);
-  }
-  
-  .arrow-key {
-    width: 50px;
-    height: 40px;
-    font-size: 16px;
-  }
-  
-  #key-esc, #key-enter {
-    height: 40px;
-  }
-}
+        .key {
+            min-width: 40px;
+            height: 40px;
+            padding: 0 10px;
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            flex-shrink: 0;
+        }
 
-/* 控制面板样式 */
-#control-panel {
-  max-width: 600px;
-  margin: 20px auto;
-  padding: 15px;
-  background-color: #f5f5f5;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
+        .key:hover {
+            background: #f0f0f0;
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
 
-.control-group {
-  margin: 15px 0;
-}
+        .key:active {
+            background: #667eea;
+            color: white;
+            transform: translateY(0) scale(0.95);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+        }
 
-.control-group label {
-  display: block;
-  margin-bottom: 5px;
-  font-weight: bold;
-  color: #333;
-}
+        .key.wide {
+            min-width: 80px;
+        }
 
-.control-group input[type="text"],
-.control-group input[type="number"] {
-  width: 100%;
-  padding: 8px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  box-sizing: border-box;
-}
+        .key.wider {
+            min-width: 120px;
+        }
 
-.control-group button {
-  background-color: #4CAF50;
-  color: white;
-  padding: 10px 20px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-}
+        /* 方向键菱形布局 */
+        .arrow-keyboard-layout {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
 
-.control-group button:hover {
-  background-color: #45a049;
-}
+        .diamond-keys {
+            display: grid;
+            grid-template-columns: repeat(3, 50px);
+            grid-template-rows: repeat(3, 50px);
+            gap: 5px;
+        }
 
-.control-group button:active {
-  background-color: #3d8b40;
-}
+        .arrow-key {
+            width: 50px;
+            height: 50px;
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+        }
 
-#speed-value {
-  display: inline-block;
-  margin-left: 10px;
-  font-weight: normal;
-  color: #666;
-}
+        .arrow-key:hover {
+            background: #f0f0f0;
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
 
-/* 键盘模式切换按钮 */
-#keyboard-mode-toggle {
-  margin: 10px auto;
-  text-align: center;
-}
+        .arrow-key:active {
+            background: #667eea;
+            color: white;
+            transform: translateY(0) scale(0.95);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+        }
 
-#keyboard-mode-toggle button {
-  background-color: #2196F3;
-  color: white;
-  padding: 10px 20px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-}
+        .key-up { grid-column: 2; grid-row: 1; }
+        .key-left { grid-column: 1; grid-row: 2; }
+        .key-down { grid-column: 2; grid-row: 3; }
+        .key-right { grid-column: 3; grid-row: 2; }
 
-#keyboard-mode-toggle button:hover {
-  background-color: #0b7dda;
-}
+        .side-key {
+            width: 70px;
+            height: 50px;
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+        }
 
-/* 全键盘样式 */
-.full-keyboard .keyboard-row {
-  gap: 5px;
-  margin: 5px 0;
-}
+        .side-key:hover {
+            background: #f0f0f0;
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
 
-.full-keyboard .key-button {
-  min-width: 35px;
-  height: 40px;
-  font-size: 14px;
-  padding: 5px;
-}
+        .side-key:active {
+            background: #667eea;
+            color: white;
+            transform: translateY(0) scale(0.95);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+        }
 
-.full-keyboard .key-button.wide {
-  min-width: 60px;
-}
+        /* 控制台输出 */
+        .console-container {
+            background: #f8f9fa;
+            border-radius: 10px;
+            overflow: hidden;
+        }
 
-.full-keyboard .key-button.extra-wide {
-  min-width: 100px;
-}
+        .console-header {
+            background: #e9ecef;
+            padding: 12px 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+        }
 
-</style>
-  </head>
-  <body>
-    <div class="spinner" id='spinner'></div>
-    <div class="emscripten" id="status">Downloading...</div>
+        .console-header:hover {
+            background: #dee2e6;
+        }
 
-    <div class="emscripten">
-      <progress value="0" max="100" id="progress" hidden=1></progress>
-    </div>
+        .console-header h3 {
+            margin: 0;
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+        }
 
-    <!-- 缩放控制 -->
-    <div id="zoom-control">
-      <label id="zoom-label">Canvas Scale: 100%</label>
-      <input type="range" id="zoom-slider" min="25" max="200" value="100" step="5">
-    </div>
+        .console-toggle {
+            font-size: 12px;
+            color: #666;
+        }
 
-    <!-- 控制面板 -->
-<div id="control-panel">
-  <div class="control-group">
-    <label for="bin-path">Bin File Path:</label>
-    <input type="text" id="bin-path" value="/bbasic/剑侠风云.bin" placeholder="/bbasic/yourfile.bin">
-  </div>
-  
-  <div class="control-group">
-    <label>Screen Size:</label>
-    <div style="display: flex; gap: 10px;">
-      <input type="number" id="screen-width" value="240" min="100" max="2000" placeholder="Width" style="width: 48%;">
-      <input type="number" id="screen-height" value="320" min="100" max="2000" placeholder="Height" style="width: 48%;">
-    </div>
-  </div>
-  
-  <div class="control-group">
-    <label for="model-type">Model Type:</label>
-    <input type="text" id="model-type" value="" placeholder="Model identifier (optional)">
-  </div>
-  
-  <div class="control-group">
-    <label for="speed-slider">
-      VM Clock Speed: <span id="speed-value">60000 Hz</span>
-    </label>
-    <input type="range" id="speed-slider" min="10000" max="200000" value="60000" step="1000">
-  </div>
-  
-  <div class="control-group">
-    <button id="load-bin-button">Load and Run Bin File</button>
-  </div>
-</div>
+        #output {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 12px;
+            height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            display: none;
+        }
 
+        #output.expanded {
+            display: block;
+        }
 
+        #output::-webkit-scrollbar {
+            width: 8px;
+        }
 
-    <!-- Canvas容器 -->
-    <div id="canvas-container">
-      <div class="emscripten_border" id="canvas-wrapper">
-        <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()" tabindex=-1></canvas>
-      </div>
-    </div>
+        #output::-webkit-scrollbar-track {
+            background: #2d2d2d;
+            border-radius: 4px;
+        }
 
-    <!-- 虚拟键盘 -->
-    <!-- <div id="virtual-keyboard">
-      <div class="keyboard-row">
-        <button class="key-button" id="key-esc">ESC</button>
-        <div class="arrow-keys">
-          <button class="key-button arrow-key" id="key-up">▲</button>
-          <button class="key-button arrow-key" id="key-left">◄</button>
-          <button class="key-button arrow-key" id="key-down">▼</button>
-          <button class="key-button arrow-key" id="key-right">►</button>
+        #output::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 4px;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 1024px) {
+            .main-content {
+                flex-direction: column;
+            }
+
+            .left-panel, .right-panel {
+                min-width: 100%;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            .header h1 {
+                font-size: 20px;
+            }
+
+            #control-panel {
+                padding: 15px;
+            }
+
+            .key {
+                min-width: 35px;
+                height: 35px;
+                font-size: 12px;
+            }
+
+            .arrow-key {
+                width: 45px;
+                height: 45px;
+            }
+
+            .diamond-keys {
+                grid-template-columns: repeat(3, 45px);
+                grid-template-rows: repeat(3, 45px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎮 WEBASM Virtual Machine</h1>
         </div>
-        <button class="key-button" id="key-enter">ENTER</button>
-      </div>
-    </div> -->
 
-    <!-- 虚拟键盘 -->
-<div id="keyboard-mode-toggle">
-  <button id="toggle-keyboard-btn">Switch to Full Keyboard</button>
-</div>
+        <div class="main-content">
+            <!-- 左侧面板 -->
+            <div class="left-panel">
+                <!-- 控制面板 -->
+                <div id="control-panel">
+                    <div class="control-group">
+                        <label for="bin-path">Bin File Path:</label>
+                        <input type="text" id="bin-path" value="/bbasic/剑侠风云.bin" placeholder="/bbasic/yourfile.bin">
+                    </div>
+                    
+                    <div class="control-group">
+                        <label>Screen Size:</label>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="number" id="screen-width" value="240" min="100" max="2000" placeholder="Width" style="width: 48%;">
+                            <input type="number" id="screen-height" value="320" min="100" max="2000" placeholder="Height" style="width: 48%;">
+                        </div>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="model-type">Model Type:</label>
+                        <input type="text" id="model-type" value="" placeholder="Model identifier (optional)">
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="speed-slider">
+                            VM Clock Speed: <span id="speed-value">60000 Hz</span>
+                        </label>
+                        <input type="range" id="speed-slider" min="10000" max="1000000" value="60000" step="1000">
+                    </div>
+                    
+                    <div class="control-group">
+                        <button id="load-bin-button">Load and Run Bin File</button>
+                    </div>
+                </div>
 
-<div id="virtual-keyboard" class="basic-keyboard">
-  <!-- 基础键盘 -->
-  <div id="basic-keyboard-layout">
-    <div class="keyboard-row">
-      <button class="key-button" id="key-esc">ESC</button>
-      <div class="arrow-keys">
-        <button class="key-button arrow-key" id="key-up">▲</button>
-        <button class="key-button arrow-key" id="key-left">◄</button>
-        <button class="key-button arrow-key" id="key-down">▼</button>
-        <button class="key-button arrow-key" id="key-right">►</button>
-      </div>
-      <button class="key-button" id="key-enter">ENTER</button>
-    </div>
-  </div>
-  
-  <!-- 全键盘 -->
-  <div id="full-keyboard-layout" style="display: none;">
-    <div class="keyboard-row">
-      <button class="key-button" data-key="q">Q</button>
-      <button class="key-button" data-key="w">W</button>
-      <button class="key-button" data-key="e">E</button>
-      <button class="key-button" data-key="r">R</button>
-      <button class="key-button" data-key="t">T</button>
-      <button class="key-button" data-key="y">Y</button>
-      <button class="key-button" data-key="u">U</button>
-      <button class="key-button" data-key="i">I</button>
-      <button class="key-button" data-key="o">O</button>
-      <button class="key-button" data-key="p">P</button>
-    </div>
-    <div class="keyboard-row">
-      <button class="key-button" data-key="a">A</button>
-      <button class="key-button" data-key="s">S</button>
-      <button class="key-button" data-key="d">D</button>
-      <button class="key-button" data-key="f">F</button>
-      <button class="key-button" data-key="g">G</button>
-      <button class="key-button" data-key="h">H</button>
-      <button class="key-button" data-key="j">J</button>
-      <button class="key-button" data-key="k">K</button>
-      <button class="key-button" data-key="l">L</button>
-    </div>
-    <div class="keyboard-row">
-      <button class="key-button" data-key="z">Z</button>
-      <button class="key-button" data-key="x">X</button>
-      <button class="key-button" data-key="c">C</button>
-      <button class="key-button" data-key="v">V</button>
-      <button class="key-button" data-key="b">B</button>
-      <button class="key-button" data-key="n">N</button>
-      <button class="key-button" data-key="m">M</button>
-      <button class="key-button" data-key=",">,</button>
-      <button class="key-button" data-key=".">.</button>
-    </div>
-    <div class="keyboard-row">
-      <button class="key-button" data-key="1">1</button>
-      <button class="key-button" data-key="2">2</button>
-      <button class="key-button" data-key="3">3</button>
-      <button class="key-button" data-key="4">4</button>
-      <button class="key-button" data-key="5">5</button>
-      <button class="key-button" data-key="6">6</button>
-      <button class="key-button" data-key="7">7</button>
-      <button class="key-button" data-key="8">8</button>
-      <button class="key-button" data-key="9">9</button>
-      <button class="key-button" data-key="0">0</button>
-    </div>
-    <div class="keyboard-row">
-      <button class="key-button" id="key-esc-full">ESC</button>
-      <button class="key-button extra-wide" data-key=" ">SPACE</button>
-      <button class="key-button" data-key="Backspace">⌫</button>
-      <button class="key-button" id="key-enter-full">ENTER</button>
-    </div>
-    <div class="keyboard-row">
-      <div class="arrow-keys">
-        <button class="key-button arrow-key" id="key-up-full">▲</button>
-        <button class="key-button arrow-key" id="key-left-full">◄</button>
-        <button class="key-button arrow-key" id="key-down-full">▼</button>
-        <button class="key-button arrow-key" id="key-right-full">►</button>
-      </div>
-    </div>
-  </div>
-</div>
+                <!-- 控制台输出 -->
+                <div class="console-container">
+                    <div class="console-header" id="console-header">
+                        <h3>Console Output</h3>
+                        <span class="console-toggle">▼ Click to expand</span>
+                    </div>
+                    <div id="output"></div>
+                </div>
+            </div>
 
+            <!-- 右侧面板 -->
+            <div class="right-panel">
+                <!-- Canvas区域 -->
+                <div id="canvas-container">
+                    <canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex=-1></canvas>
+                </div>
 
-    <!-- 日志输出区 -->
-    <div id="output-container">
-      <div id="output-header">
-        <span>Console Output</span>
-        <span id="output-toggle">▼ Click to expand</span>
-      </div>
-      <textarea id="output" rows="8"></textarea>
+                <!-- 缩放控制 -->
+                <div id="zoom-control">
+                    <label for="zoom-slider">Zoom:</label>
+                    <input type="range" id="zoom-slider" min="50" max="200" value="100" step="10">
+                    <span id="zoom-value">100%</span>
+                </div>
+
+                <!-- 虚拟键盘 -->
+                <div id="keyboard-container">
+                    <div class="keyboard-tabs">
+                        <div class="keyboard-tab active" data-keyboard="arrow">Arrow Keys</div>
+                        <div class="keyboard-tab" data-keyboard="full">Full Keyboard</div>
+                    </div>
+
+                    <!-- 方向键键盘 -->
+                    <div id="arrow-keyboard" class="keyboard active">
+                        <div class="arrow-keyboard-layout">
+                            <div class="side-key" data-key="Escape">ESC</div>
+                            <div class="diamond-keys">
+                                <div class="arrow-key key-up" data-key="ArrowUp">↑</div>
+                                <div class="arrow-key key-left" data-key="ArrowLeft">←</div>
+                                <div class="arrow-key key-down" data-key="ArrowDown">↓</div>
+                                <div class="arrow-key key-right" data-key="ArrowRight">→</div>
+                            </div>
+                            <div class="side-key" data-key="Enter">ENTER</div>
+                        </div>
+                    </div>
+
+                    <!-- 全键盘 -->
+                    <div id="full-keyboard" class="keyboard">
+                        <div class="keyboard-row">
+                            <div class="key" data-key="Escape">ESC</div>
+                            <div class="key" data-key="1">1</div>
+                            <div class="key" data-key="2">2</div>
+                            <div class="key" data-key="3">3</div>
+                            <div class="key" data-key="4">4</div>
+                            <div class="key" data-key="5">5</div>
+                            <div class="key" data-key="6">6</div>
+                            <div class="key" data-key="7">7</div>
+                            <div class="key" data-key="8">8</div>
+                            <div class="key" data-key="9">9</div>
+                            <div class="key" data-key="0">0</div>
+                            <div class="key" data-key="Backspace">←</div>
+                        </div>
+                        <div class="keyboard-row">
+                            <div class="key" data-key="q">Q</div>
+                            <div class="key" data-key="w">W</div>
+                            <div class="key" data-key="e">E</div>
+                            <div class="key" data-key="r">R</div>
+                            <div class="key" data-key="t">T</div>
+                            <div class="key" data-key="y">Y</div>
+                            <div class="key" data-key="u">U</div>
+                            <div class="key" data-key="i">I</div>
+                            <div class="key" data-key="o">O</div>
+                            <div class="key" data-key="p">P</div>
+                        </div>
+                        <div class="keyboard-row">
+                            <div class="key" data-key="a">A</div>
+                            <div class="key" data-key="s">S</div>
+                            <div class="key" data-key="d">D</div>
+                            <div class="key" data-key="f">F</div>
+                            <div class="key" data-key="g">G</div>
+                            <div class="key" data-key="h">H</div>
+                            <div class="key" data-key="j">J</div>
+                            <div class="key" data-key="k">K</div>
+                            <div class="key" data-key="l">L</div>
+                        </div>
+                        <div class="keyboard-row">
+                            <div class="key" data-key="z">Z</div>
+                            <div class="key" data-key="x">X</div>
+                            <div class="key" data-key="c">C</div>
+                            <div class="key" data-key="v">V</div>
+                            <div class="key" data-key="b">B</div>
+                            <div class="key" data-key="n">N</div>
+                            <div class="key" data-key="m">M</div>
+                            <div class="key" data-key=",">,</div>
+                            <div class="key" data-key=".">.</div>
+                        </div>
+                        <div class="keyboard-row">
+                            <div class="key wider" data-key=" ">SPACE</div>
+                            <div class="key" data-key="Enter">ENTER</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script type='text/javascript'>
-      var statusElement = document.getElementById('status');
-      var progressElement = document.getElementById('progress');
-      var spinnerElement = document.getElementById('spinner');
-      var canvasElement = document.getElementById('canvas');
-      var outputElement = document.getElementById('output');
-      if (outputElement) outputElement.value = ''; // clear browser cache
-
-      // 缩放功能
-      const zoomSlider = document.getElementById('zoom-slider');
-      const zoomLabel = document.getElementById('zoom-label');
-      const canvasWrapper = document.getElementById('canvas-wrapper');
-      const canvasContainer = document.getElementById('canvas-container');
-
-      function updateCanvasScale() {
-        const scale = zoomSlider.value / 100;
-        canvasWrapper.style.transform = `scale(${scale})`;
-        zoomLabel.textContent = `Canvas Scale: ${zoomSlider.value}%`;
-        
-        // 根据缩放比例动态调整容器高度
-        const canvasHeight = canvasElement.height || 600; // 默认高度
-        const scaledHeight = canvasHeight * scale;
-        canvasContainer.style.minHeight = scaledHeight + 'px';
-      }
-
-      zoomSlider.addEventListener('input', updateCanvasScale);
-
-      // 监听canvas尺寸变化（如果canvas动态改变大小）
-      const resizeObserver = new ResizeObserver(() => {
-        updateCanvasScale();
-      });
-      resizeObserver.observe(canvasElement);
-
-      // 日志区展开/收起
-      const outputHeader = document.getElementById('output-header');
-      const outputToggle = document.getElementById('output-toggle');
-
-      outputHeader.addEventListener('click', function() {
-        outputElement.classList.toggle('expanded');
-        if (outputElement.classList.contains('expanded')) {
-          outputToggle.textContent = '▲ Click to collapse';
-        } else {
-          outputToggle.textContent = '▼ Click to expand';
-        }
-      });
-
-      // 虚拟键盘功能
-      const keyMapping = {
-        'key-esc': { key: 'Escape', keyCode: 27, code: 'Escape' },
-        'key-up': { key: 'ArrowUp', keyCode: 38, code: 'ArrowUp' },
-        'key-down': { key: 'ArrowDown', keyCode: 40, code: 'ArrowDown' },
-        'key-left': { key: 'ArrowLeft', keyCode: 37, code: 'ArrowLeft' },
-        'key-right': { key: 'ArrowRight', keyCode: 39, code: 'ArrowRight' },
-        'key-enter': { key: 'Enter', keyCode: 13, code: 'Enter' }
-      };
-
-      let keyRepeatIntervals = {};
-      let keyRepeatTimeouts = {};
-
-      function dispatchKeyEvent(eventType, keyInfo) {
-        // 为document派发事件
-        const event1 = new KeyboardEvent(eventType, {
-          key: keyInfo.key,
-          keyCode: keyInfo.keyCode,
-          code: keyInfo.code,
-          which: keyInfo.keyCode,
-          bubbles: true,
-          cancelable: true
-        });
-        document.dispatchEvent(event1);
-
-        // 为canvas派发事件
-        const event2 = new KeyboardEvent(eventType, {
-          key: keyInfo.key,
-          keyCode: keyInfo.keyCode,
-          code: keyInfo.code,
-          which: keyInfo.keyCode,
-          bubbles: true,
-          cancelable: true
-        });
-        canvasElement.dispatchEvent(event2);
-      }
-
-      function startKeyPress(buttonId, keyInfo) {
-        const button = document.getElementById(buttonId);
-        button.classList.add('pressed');
-        
-        // 立即触发一次keydown
-        dispatchKeyEvent('keydown', keyInfo);
-        
-        // 如果是方向键，设置长按重复
-        if (buttonId.startsWith('key-up') || buttonId.startsWith('key-down') || 
-            buttonId.startsWith('key-left') || buttonId.startsWith('key-right')) {
-          
-          // 延迟后开始重复（模拟系统键盘行为）
-          keyRepeatTimeouts[buttonId] = setTimeout(() => {
-            // 检查按钮是否仍然处于按下状态
-            if (keyRepeatIntervals[buttonId] === 'waiting') {
-              keyRepeatIntervals[buttonId] = setInterval(() => {
-                dispatchKeyEvent('keydown', keyInfo);
-              }, 80); // 每80ms触发一次
+        var Module = {
+            preRun: [],
+            postRun: [],
+            print: (function() {
+                var element = document.getElementById('output');
+                if (element) element.textContent = '';
+                return function(text) {
+                    if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
+                    console.log(text);
+                    if (element) {
+                        element.textContent += text + "\n";
+                        element.scrollTop = element.scrollHeight;
+                    }
+                };
+            })(),
+            canvas: (function() {
+                var canvas = document.getElementById('canvas');
+                canvas.addEventListener("webglcontextlost", function(e) { 
+                    alert('WebGL context lost. You will need to reload the page.'); 
+                    e.preventDefault(); 
+                }, false);
+                return canvas;
+            })(),
+            setStatus: function(text) {
+                console.log("Status: " + text);
+            },
+            totalDependencies: 0,
+            monitorRunDependencies: function(left) {
+                this.totalDependencies = Math.max(this.totalDependencies, left);
+            },
+            onRuntimeInitialized: function() {
+                console.log('✅ Module runtime initialized');
+                console.log('Available functions:', {
+                    load_and_run_bin: typeof Module._load_and_run_bin,
+                    ccall: typeof Module.ccall,
+                    set_vm_clock_speed: typeof Module._set_vm_clock_speed
+                });
             }
-          }, 300); // 300ms后开始重复
-          
-          keyRepeatIntervals[buttonId] = 'waiting'; // 标记为等待重复状态
-        }
-      }
-
-      function endKeyPress(buttonId, keyInfo) {
-        const button = document.getElementById(buttonId);
-        button.classList.remove('pressed');
-        
-        // 清除延迟触发的timeout
-        if (keyRepeatTimeouts[buttonId]) {
-          clearTimeout(keyRepeatTimeouts[buttonId]);
-          delete keyRepeatTimeouts[buttonId];
-        }
-        
-        // 清除重复触发的interval
-        if (keyRepeatIntervals[buttonId] && keyRepeatIntervals[buttonId] !== 'waiting') {
-          clearInterval(keyRepeatIntervals[buttonId]);
-        }
-        delete keyRepeatIntervals[buttonId];
-        
-        // 触发keyup事件
-        dispatchKeyEvent('keyup', keyInfo);
-      }
-
-      // 为每个按键绑定事件
-      Object.keys(keyMapping).forEach(buttonId => {
-        const button = document.getElementById(buttonId);
-        const keyInfo = keyMapping[buttonId];
-
-        // 鼠标事件
-        button.addEventListener('mousedown', (e) => {
-          e.preventDefault();
-          startKeyPress(buttonId, keyInfo);
-        });
-
-        button.addEventListener('mouseup', (e) => {
-          e.preventDefault();
-          endKeyPress(buttonId, keyInfo);
-        });
-
-        button.addEventListener('mouseleave', (e) => {
-          // 只有在按钮被按下的情况下才触发结束
-          if (keyRepeatIntervals[buttonId]) {
-            endKeyPress(buttonId, keyInfo);
-          }
-        });
-
-        // 触摸事件（移动端）
-        button.addEventListener('touchstart', (e) => {
-          e.preventDefault();
-          startKeyPress(buttonId, keyInfo);
-        });
-
-        button.addEventListener('touchend', (e) => {
-          e.preventDefault();
-          endKeyPress(buttonId, keyInfo);
-        });
-
-        button.addEventListener('touchcancel', (e) => {
-          e.preventDefault();
-          // 只有在按钮被按下的情况下才触发结束
-          if (keyRepeatIntervals[buttonId]) {
-            endKeyPress(buttonId, keyInfo);
-          }
-        });
-      });
-
-      // 全局鼠标/触摸释放事件，确保在任何情况下都能停止重复
-      document.addEventListener('mouseup', () => {
-        Object.keys(keyRepeatIntervals).forEach(buttonId => {
-          if (keyRepeatIntervals[buttonId]) {
-            endKeyPress(buttonId, keyMapping[buttonId]);
-          }
-        });
-      });
-
-      document.addEventListener('touchend', () => {
-        Object.keys(keyRepeatIntervals).forEach(buttonId => {
-          if (keyRepeatIntervals[buttonId]) {
-            endKeyPress(buttonId, keyMapping[buttonId]);
-          }
-        });
-      });
-
-      // 防止页面滚动
-      document.getElementById('virtual-keyboard').addEventListener('touchmove', (e) => {
-        e.preventDefault();
-      }, { passive: false });
-
-      // As a default initial behavior, pop up an alert when webgl context is lost. To make your
-      // application robust, you may want to override this behavior before shipping!
-      // See http://www.khronos.org/registry/webgl/specs/latest/1.0/#5.15.2
-      canvasElement.addEventListener('webglcontextlost', (e) => {
-        alert('WebGL context lost. You will need to reload the page.');
-        e.preventDefault();
-      }, false);
-
-      var Module = {
-        print(...args) {
-          console.log(...args);
-          if (outputElement) {
-            var text = args.join(' ');
-            outputElement.value += text + "\n";
-            outputElement.scrollTop = outputElement.scrollHeight; // focus on bottom
-          }
-        },
-        canvas: canvasElement,
-        setStatus(text) {
-          if (!Module.setStatus.last) Module.setStatus.last = { time: Date.now(), text: '' };
-          if (text === Module.setStatus.last.text) return;
-          var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
-          var now = Date.now();
-          if (m && now - Module.setStatus.last.time < 30) return;
-          Module.setStatus.last.time = now;
-          Module.setStatus.last.text = text;
-          if (m) {
-            text = m[1];
-            progressElement.value = parseInt(m[2])*100;
-            progressElement.max = parseInt(m[4])*100;
-            progressElement.hidden = false;
-            spinnerElement.hidden = false;
-          } else {
-            progressElement.value = null;
-            progressElement.max = null;
-            progressElement.hidden = true;
-            if (!text) spinnerElement.style.display = 'none';
-          }
-          statusElement.innerHTML = text;
-        },
-        totalDependencies: 0,
-        monitorRunDependencies(left) {
-          this.totalDependencies = Math.max(this.totalDependencies, left);
-          Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : 'All downloads complete.');
-        }
-      };
-      Module.setStatus('Downloading...');
-      window.onerror = (event) => {
-        Module.setStatus('Exception thrown, see JavaScript console');
-        spinnerElement.style.display = 'none';
-        Module.setStatus = (text) => {
-          if (text) console.error('[post-exception status] ' + text);
         };
-      };
 
-      // 控制面板功能
-const binPathInput = document.getElementById('bin-path');
-const screenWidthInput = document.getElementById('screen-width');
-const screenHeightInput = document.getElementById('screen-height');
-const modelTypeInput = document.getElementById('model-type');
-const speedSlider = document.getElementById('speed-slider');
-const speedValue = document.getElementById('speed-value');
-const loadBinButton = document.getElementById('load-bin-button');
-
-// 更新速度显示
-speedSlider.addEventListener('input', function() {
-  const speed = this.value;
-  speedValue.textContent = speed + ' Hz';
-  if (Module._set_vm_clock_speed) {
-    Module._set_vm_clock_speed(parseInt(speed));
-  }
-});
-
-// 加载bin文件
-// 加载bin文件
-loadBinButton.addEventListener('click', function() {
-  const binPath = binPathInput.value.trim();
-  const modelType = modelTypeInput.value.trim();
-  const width = parseInt(screenWidthInput.value) || 240;
-  const height = parseInt(screenHeightInput.value) || 320;
-  
-  if (!binPath) {
-    alert('Please enter a bin file path');
-    return;
-  }
-  
-  if (width < 100 || width > 2000 || height < 100 || height > 2000) {
-    alert('Screen size must be between 100x100 and 2000x2000');
-    return;
-  }
-  
-  this.disabled = true;
-  this.textContent = 'Loading...';
-  
-  // 延迟执行，让UI有时间更新
-  setTimeout(() => {
-    try {
-      // 使用 ccall 来正确处理字符串传递
-      const result = Module.ccall(
-        'load_and_run_bin',  // C函数名
-        'number',            // 返回类型
-        ['string', 'number', 'number', 'string'],  // 参数类型
-        [binPath, width, height, modelType || '']  // 参数值
-      );
-      
-      if (result === 0) {
-        Module.print('Successfully loaded: ' + binPath);
-        Module.print('Screen size: ' + width + 'x' + height);
-        
-        // 更新Canvas容器的最小高度以适应新尺寸
-        const scale = zoomSlider.value / 100;
-        const scaledHeight = height * scale;
-        canvasContainer.style.minHeight = scaledHeight + 'px';
-      } else if (result === -2) {
-        Module.print('Failed to reinitialize SDL window');
-        alert('Failed to set window size. Check console for details.');
-      } else {
-        Module.print('Failed to load: ' + binPath);
-        alert('Failed to load bin file. Check console for details.');
-      }
-    } catch (error) {
-      Module.print('Error calling load_and_run_bin: ' + error);
-      alert('Error: ' + error);
-    }
-    
-    loadBinButton.disabled = false;
-    loadBinButton.textContent = 'Load and Run Bin File';
-  }, 100);
-});
-
-
-// 键盘模式切换
-const toggleKeyboardBtn = document.getElementById('toggle-keyboard-btn');
-const virtualKeyboard = document.getElementById('virtual-keyboard');
-const basicLayout = document.getElementById('basic-keyboard-layout');
-const fullLayout = document.getElementById('full-keyboard-layout');
-let isFullKeyboard = false;
-
-toggleKeyboardBtn.addEventListener('click', function() {
-  isFullKeyboard = !isFullKeyboard;
-  
-  if (isFullKeyboard) {
-    basicLayout.style.display = 'none';
-    fullLayout.style.display = 'block';
-    virtualKeyboard.classList.remove('basic-keyboard');
-    virtualKeyboard.classList.add('full-keyboard');
-    this.textContent = 'Switch to Basic Keyboard';
-  } else {
-    basicLayout.style.display = 'block';
-    fullLayout.style.display = 'none';
-    virtualKeyboard.classList.remove('full-keyboard');
-    virtualKeyboard.classList.add('basic-keyboard');
-    this.textContent = 'Switch to Full Keyboard';
-  }
-});
-
-// 为全键盘按钮添加事件处理
-function setupFullKeyboard() {
-  // 字母和数字键
-  const alphanumericKeys = fullLayout.querySelectorAll('.key-button[data-key]');
-  alphanumericKeys.forEach(button => {
-    const key = button.getAttribute('data-key');
-    let keyCode, code;
-    
-    if (key === ' ') {
-      keyCode = 32;
-      code = 'Space';
-    } else if (key === 'Backspace') {
-      keyCode = 8;
-      code = 'Backspace';
-    } else if (key === ',') {
-      keyCode = 188;
-      code = 'Comma';
-    } else if (key === '.') {
-      keyCode = 190;
-      code = 'Period';
-    } else {
-      keyCode = key.toUpperCase().charCodeAt(0);
-      code = 'Key' + key.toUpperCase();
-    }
-    
-    const keyInfo = { key: key, keyCode: keyCode, code: code };
-    
-    button.addEventListener('mousedown', (e) => {
-      e.preventDefault();
-      startKeyPress('full-' + key, keyInfo);
-    });
-    
-    button.addEventListener('mouseup', (e) => {
-      e.preventDefault();
-      endKeyPress('full-' + key, keyInfo);
-    });
-    
-    button.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      startKeyPress('full-' + key, keyInfo);
-    });
-    
-    button.addEventListener('touchend', (e) => {
-      e.preventDefault();
-      endKeyPress('full-' + key, keyInfo);
-    });
-  });
-  
-  // ESC和Enter键（全键盘版本）
-  const fullEsc = document.getElementById('key-esc-full');
-  const fullEnter = document.getElementById('key-enter-full');
-  
-  if (fullEsc) {
-    setupKeyButton(fullEsc, 'key-esc-full', 
-      { key: 'Escape', keyCode: 27, code: 'Escape' });
-  }
-  
-  if (fullEnter) {
-    setupKeyButton(fullEnter, 'key-enter-full',
-      { key: 'Enter', keyCode: 13, code: 'Enter' });
-  }
-  
-  // 方向键（全键盘版本）
-  setupKeyButton(document.getElementById('key-up-full'), 'key-up-full',
-    { key: 'ArrowUp', keyCode: 38, code: 'ArrowUp' });
-  setupKeyButton(document.getElementById('key-down-full'), 'key-down-full',
-    { key: 'ArrowDown', keyCode: 40, code: 'ArrowDown' });
-  setupKeyButton(document.getElementById('key-left-full'), 'key-left-full',
-    { key: 'ArrowLeft', keyCode: 37, code: 'ArrowLeft' });
-  setupKeyButton(document.getElementById('key-right-full'), 'key-right-full',
-    { key: 'ArrowRight', keyCode: 39, code: 'ArrowRight' });
-}
-
-function setupKeyButton(button, buttonId, keyInfo) {
-  if (!button) return;
-  
-  button.addEventListener('mousedown', (e) => {
-    e.preventDefault();
-    startKeyPress(buttonId, keyInfo);
-  });
-  
-  button.addEventListener('mouseup', (e) => {
-    e.preventDefault();
-    endKeyPress(buttonId, keyInfo);
-  });
-  
-  button.addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    startKeyPress(buttonId, keyInfo);
-  });
-  
-  button.addEventListener('touchend', (e) => {
-    e.preventDefault();
-    endKeyPress(buttonId, keyInfo);
-  });
-}
-
-// 初始化全键盘
-setupFullKeyboard();
-
+        window.onerror = function(msg, url, line) {
+            console.error('Error: ' + msg + ' at ' + url + ':' + line);
+        };
     </script>
     <script async type="text/javascript" src="index.js"></script>
-  </body>
+
+    <script>
+        // 等待DOM加载完成
+        document.addEventListener('DOMContentLoaded', function() {
+            // Canvas缩放功能
+            const canvas = document.getElementById('canvas');
+            const canvasContainer = document.getElementById('canvas-container');
+            const zoomSlider = document.getElementById('zoom-slider');
+            const zoomValue = document.getElementById('zoom-value');
+
+            zoomSlider.addEventListener('input', function() {
+                const scale = this.value / 100;
+                canvas.style.transform = `scale(${scale})`;
+                canvas.style.transformOrigin = 'center center';
+                zoomValue.textContent = this.value + '%';
+                
+                // 调整容器高度以适应缩放
+                const scaledHeight = canvas.height * scale;
+                canvasContainer.style.minHeight = scaledHeight + 'px';
+            });
+
+            // 控制台展开/收起
+            const consoleHeader = document.getElementById('console-header');
+            const consoleOutput = document.getElementById('output');
+            const consoleToggle = consoleHeader.querySelector('.console-toggle');
+
+            consoleHeader.addEventListener('click', function() {
+                consoleOutput.classList.toggle('expanded');
+                if (consoleOutput.classList.contains('expanded')) {
+                    consoleToggle.textContent = '▲ Click to collapse';
+                } else {
+                    consoleToggle.textContent = '▼ Click to expand';
+                }
+            });
+
+            // 键盘切换功能
+            const keyboardTabs = document.querySelectorAll('.keyboard-tab');
+            const keyboards = document.querySelectorAll('.keyboard');
+
+            keyboardTabs.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    keyboardTabs.forEach(t => t.classList.remove('active'));
+                    keyboards.forEach(k => k.classList.remove('active'));
+                    
+                    this.classList.add('active');
+                    const keyboardId = this.dataset.keyboard + '-keyboard';
+                    document.getElementById(keyboardId).classList.add('active');
+                });
+            });
+
+            // 虚拟键盘功能
+            const keyCodeMap = {
+                'Escape': 27,
+                'Enter': 13,
+                'Backspace': 8,
+                'ArrowUp': 38,
+                'ArrowDown': 40,
+                'ArrowLeft': 37,
+                'ArrowRight': 39,
+                ' ': 32,
+                ',': 188,
+                '.': 190
+            };
+
+            function simulateKeyDown(key) {
+                // 如果虚拟键盘被禁用，不发送事件
+                if (!virtualKeyboardEnabled) {
+                    return;
+                }
+                
+                let keyCode = keyCodeMap[key] || key.toUpperCase().charCodeAt(0);
+                
+                const event = new KeyboardEvent('keydown', {
+                    key: key,
+                    code: key,
+                    keyCode: keyCode,
+                    which: keyCode,
+                    bubbles: true,
+                    cancelable: true
+                });
+                
+                canvas.dispatchEvent(event);
+                document.dispatchEvent(event);
+            }
+
+            function simulateKeyUp(key) {
+                // 如果虚拟键盘被禁用，不发送事件
+                if (!virtualKeyboardEnabled) {
+                    return;
+                }
+                
+                let keyCode = keyCodeMap[key] || key.toUpperCase().charCodeAt(0);
+                
+                const event = new KeyboardEvent('keyup', {
+                    key: key,
+                    code: key,
+                    keyCode: keyCode,
+                    which: keyCode,
+                    bubbles: true,
+                    cancelable: true
+                });
+                
+                canvas.dispatchEvent(event);
+                document.dispatchEvent(event);
+            }
+
+            // 跟踪当前按下的按键（用于长按功能）
+            let currentPressedKey = null;
+            let pressInterval = null;
+            let pressTimeout = null;
+            let virtualKeyboardEnabled = true;
+
+            // 为所有按键添加事件监听
+            document.querySelectorAll('.key, .arrow-key, .side-key').forEach(keyElement => {
+                // 鼠标事件
+                keyElement.addEventListener('mousedown', function(e) {
+                    e.preventDefault();
+                    const keyValue = this.dataset.key;
+                    
+                    // 立即触发一次 keydown
+                    console.log('Key down:', keyValue);
+                    simulateKeyDown(keyValue);
+                    
+                    // 添加视觉反馈
+                    this.style.background = '#667eea';
+                    this.style.color = 'white';
+                    
+                    // 保存当前按键
+                    currentPressedKey = {
+                        key: keyValue,
+                        element: this
+                    };
+                    
+                    // 延迟后开始长按重复（仅对方向键）
+                    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(keyValue)) {
+                        pressTimeout = setTimeout(() => {
+                            if (currentPressedKey) {
+                                pressInterval = setInterval(() => {
+                                    if (currentPressedKey) {
+                                        simulateKeyDown(keyValue);
+                                    }
+                                }, 100); // 每100ms重复一次
+                            }
+                        }, 400); // 400ms后开始重复
+                    }
+                });
+
+                keyElement.addEventListener('mouseup', function(e) {
+                    e.preventDefault();
+                    
+                    if (currentPressedKey && currentPressedKey.element === this) {
+                        const keyValue = currentPressedKey.key;
+                        
+                        // 发送 keyup 事件
+                        console.log('Key up:', keyValue);
+                        simulateKeyUp(keyValue);
+                        
+                        // 清除长按
+                        if (pressTimeout) {
+                            clearTimeout(pressTimeout);
+                            pressTimeout = null;
+                        }
+                        if (pressInterval) {
+                            clearInterval(pressInterval);
+                            pressInterval = null;
+                        }
+                        
+                        currentPressedKey = null;
+                    }
+                    
+                    // 恢复样式
+                    this.style.background = '';
+                    this.style.color = '';
+                });
+
+                keyElement.addEventListener('mouseleave', function(e) {
+                    // 鼠标离开按键时，如果是当前按下的按键，则释放
+                    if (currentPressedKey && currentPressedKey.element === this) {
+                        const keyValue = currentPressedKey.key;
+                        simulateKeyUp(keyValue);
+                        
+                        if (pressTimeout) {
+                            clearTimeout(pressTimeout);
+                            pressTimeout = null;
+                        }
+                        if (pressInterval) {
+                            clearInterval(pressInterval);
+                            pressInterval = null;
+                        }
+                        
+                        currentPressedKey = null;
+                        this.style.background = '';
+                        this.style.color = '';
+                    }
+                });
+
+                // 触摸事件（移动端）
+                keyElement.addEventListener('touchstart', function(e) {
+                    e.preventDefault();
+                    const keyValue = this.dataset.key;
+                    
+                    console.log('Touch start:', keyValue);
+                    simulateKeyDown(keyValue);
+                    
+                    this.style.background = '#667eea';
+                    this.style.color = 'white';
+                    
+                    currentPressedKey = {
+                        key: keyValue,
+                        element: this
+                    };
+                    
+                    // 方向键支持长按
+                    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(keyValue)) {
+                        pressTimeout = setTimeout(() => {
+                            if (currentPressedKey) {
+                                pressInterval = setInterval(() => {
+                                    if (currentPressedKey) {
+                                        simulateKeyDown(keyValue);
+                                    }
+                                }, 100);
+                            }
+                        }, 400);
+                    }
+                });
+
+                keyElement.addEventListener('touchend', function(e) {
+                    e.preventDefault();
+                    
+                    if (currentPressedKey && currentPressedKey.element === this) {
+                        const keyValue = currentPressedKey.key;
+                        
+                        console.log('Touch end:', keyValue);
+                        simulateKeyUp(keyValue);
+                        
+                        if (pressTimeout) {
+                            clearTimeout(pressTimeout);
+                            pressTimeout = null;
+                        }
+                        if (pressInterval) {
+                            clearInterval(pressInterval);
+                            pressInterval = null;
+                        }
+                        
+                        currentPressedKey = null;
+                    }
+                    
+                    this.style.background = '';
+                    this.style.color = '';
+                });
+
+                keyElement.addEventListener('touchcancel', function(e) {
+                    e.preventDefault();
+                    
+                    if (currentPressedKey && currentPressedKey.element === this) {
+                        const keyValue = currentPressedKey.key;
+                        simulateKeyUp(keyValue);
+                        
+                        if (pressTimeout) {
+                            clearTimeout(pressTimeout);
+                            pressTimeout = null;
+                        }
+                        if (pressInterval) {
+                            clearInterval(pressInterval);
+                            pressInterval = null;
+                        }
+                        
+                        currentPressedKey = null;
+                    }
+                    
+                    this.style.background = '';
+                    this.style.color = '';
+                });
+            });
+
+            // 全局鼠标/触摸释放，确保在任何情况下都能释放按键
+            document.addEventListener('mouseup', function() {
+                if (currentPressedKey) {
+                    simulateKeyUp(currentPressedKey.key);
+                    currentPressedKey.element.style.background = '';
+                    currentPressedKey.element.style.color = '';
+                    currentPressedKey = null;
+                    
+                    if (pressTimeout) {
+                        clearTimeout(pressTimeout);
+                        pressTimeout = null;
+                    }
+                    if (pressInterval) {
+                        clearInterval(pressInterval);
+                        pressInterval = null;
+                    }
+                }
+            });
+
+            document.addEventListener('touchend', function() {
+                if (currentPressedKey) {
+                    simulateKeyUp(currentPressedKey.key);
+                    currentPressedKey.element.style.background = '';
+                    currentPressedKey.element.style.color = '';
+                    currentPressedKey = null;
+                    
+                    if (pressTimeout) {
+                        clearTimeout(pressTimeout);
+                        pressTimeout = null;
+                    }
+                    if (pressInterval) {
+                        clearInterval(pressInterval);
+                        pressInterval = null;
+                    }
+                }
+            });
+
+            // 控制面板功能
+            const binPathInput = document.getElementById('bin-path');
+            const screenWidthInput = document.getElementById('screen-width');
+            const screenHeightInput = document.getElementById('screen-height');
+            const modelTypeInput = document.getElementById('model-type');
+            const speedSlider = document.getElementById('speed-slider');
+            const speedValue = document.getElementById('speed-value');
+            const loadBinButton = document.getElementById('load-bin-button');
+
+            // 所有输入框
+            const allInputs = [binPathInput, screenWidthInput, screenHeightInput, modelTypeInput];
+
+            // 当输入框获得焦点时，禁用虚拟键盘
+            allInputs.forEach(input => {
+                input.addEventListener('focus', function() {
+                    virtualKeyboardEnabled = false;
+                    console.log('Virtual keyboard disabled - input focused');
+                });
+                
+                input.addEventListener('blur', function() {
+                    virtualKeyboardEnabled = true;
+                    console.log('Virtual keyboard enabled - input blurred');
+                });
+            });
+
+            // 更新速度显示
+            speedSlider.addEventListener('input', function() {
+                const speed = this.value;
+                speedValue.textContent = speed + ' Hz';
+                if (Module._set_vm_clock_speed) {
+                    Module._set_vm_clock_speed(parseInt(speed));
+                }
+            });
+
+            // 加载bin文件
+            loadBinButton.addEventListener('click', function() {
+                if (!Module.ccall) {
+                    alert('Module is still loading, please wait...');
+                    return;
+                }
+
+                const binPath = binPathInput.value.trim();
+                const modelType = modelTypeInput.value.trim();
+                const width = parseInt(screenWidthInput.value) || 240;
+                const height = parseInt(screenHeightInput.value) || 320;
+                
+                if (!binPath) {
+                    alert('Please enter a bin file path');
+                    return;
+                }
+                
+                if (width < 100 || width > 2000 || height < 100 || height > 2000) {
+                    alert('Screen size must be between 100x100 and 2000x2000');
+                    return;
+                }
+                
+                this.disabled = true;
+                this.textContent = 'Loading...';
+                
+                setTimeout(() => {
+                    try {
+                        const result = Module.ccall(
+                            'load_and_run_bin',
+                            'number',
+                            ['string', 'number', 'number', 'string'],
+                            [binPath, width, height, modelType || '']
+                        );
+                        
+                        if (result === 0) {
+                            Module.print('✅ Successfully loaded: ' + binPath);
+                            Module.print('📐 Screen size: ' + width + 'x' + height);
+                            
+                            const scale = zoomSlider.value / 100;
+                            const scaledHeight = height * scale;
+                            canvasContainer.style.minHeight = scaledHeight + 'px';
+                        } else if (result === -2) {
+                            Module.print('❌ Failed to reinitialize SDL window');
+                            alert('Failed to set window size. Check console for details.');
+                        } else {
+                            Module.print('❌ Failed to load: ' + binPath);
+                            alert('Failed to load bin file. Check console for details.');
+                        }
+                    } catch (error) {
+                        Module.print('❌ Error: ' + error);
+                        alert('Error: ' + error);
+                    }
+                    
+                    loadBinButton.disabled = false;
+                    loadBinButton.textContent = 'Load and Run Bin File';
+                }, 100);
+            });
+        });
+    </script>
+</body>
 </html>
