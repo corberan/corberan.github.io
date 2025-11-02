@@ -222,12 +222,14 @@
             position: relative;
         }
 
+        /* 关键修改：保证Canvas像素清晰 */
         #canvas {
             display: block;
             image-rendering: -moz-crisp-edges;
             image-rendering: -webkit-crisp-edges;
             image-rendering: pixelated;
             image-rendering: crisp-edges;
+            -ms-interpolation-mode: nearest-neighbor; /* for IE */
         }
 
         /* 缩放控制 */
@@ -313,20 +315,20 @@
 
         .keyboard-row {
             display: flex;
-            gap: 5px;
+            gap: 4px; /* 关键修改：减小按键间距 */
             margin-bottom: 5px;
             justify-content: center;
             flex-wrap: wrap;
         }
 
         .key {
-            min-width: 40px;
-            height: 40px;
-            padding: 0 10px;
+            min-width: 36px; /* 关键修改：减小最小宽度 */
+            height: 38px; /* 关键修改：减小高度 */
+            padding: 0 8px; /* 关键修改：减小内边距 */
             background: white;
             border: 2px solid #ddd;
             border-radius: 5px;
-            font-size: 14px;
+            font-size: 13px; /* 关键修改：减小字体 */
             font-weight: 600;
             cursor: pointer;
             transition: all 0.15s;
@@ -351,13 +353,13 @@
         }
 
         .key.wide {
-            min-width: 80px;
+            min-width: 76px;
         }
 
         .key.wider {
-            min-width: 120px;
+            min-width: 116px;
         }
-
+        
         /* 方向键菱形布局 */
         .arrow-keyboard-layout {
             display: flex;
@@ -745,7 +747,6 @@
                 } else {
                     loadingText.textContent = text;
                     if (text === '') {
-                        // 加载完成
                         setTimeout(function() {
                             loadingOverlay.classList.add('hidden');
                         }, 500);
@@ -763,11 +764,6 @@
             },
             onRuntimeInitialized: function() {
                 console.log('✅ Module runtime initialized');
-                console.log('Available functions:', {
-                    load_and_run_bin: typeof Module._load_and_run_bin,
-                    ccall: typeof Module.ccall,
-                    set_vm_clock_speed: typeof Module._set_vm_clock_speed
-                });
                 Module.setStatus('');
             }
         };
@@ -783,21 +779,18 @@
     <script async type="text/javascript" src="index.js"></script>
 
     <script>
-        // 等待DOM加载完成
         document.addEventListener('DOMContentLoaded', function() {
-            // Canvas缩放功能
             const canvas = document.getElementById('canvas');
             const canvasContainer = document.getElementById('canvas-container');
             const zoomSlider = document.getElementById('zoom-slider');
             const zoomValue = document.getElementById('zoom-value');
 
+            // Canvas缩放功能
             zoomSlider.addEventListener('input', function() {
                 const scale = this.value / 100;
                 canvas.style.transform = `scale(${scale})`;
                 canvas.style.transformOrigin = 'center center';
                 zoomValue.textContent = this.value + '%';
-                
-                // 调整容器高度以适应缩放
                 if (canvas.height) {
                     const scaledHeight = canvas.height * scale;
                     canvasContainer.style.minHeight = scaledHeight + 'px';
@@ -808,403 +801,163 @@
             const consoleHeader = document.getElementById('console-header');
             const consoleOutput = document.getElementById('output');
             const consoleToggle = consoleHeader.querySelector('.console-toggle');
-
             consoleHeader.addEventListener('click', function() {
                 consoleOutput.classList.toggle('expanded');
-                if (consoleOutput.classList.contains('expanded')) {
-                    consoleToggle.textContent = '▲ Click to collapse';
-                } else {
-                    consoleToggle.textContent = '▼ Click to expand';
-                }
+                consoleToggle.textContent = consoleOutput.classList.contains('expanded') ? '▲ Click to collapse' : '▼ Click to expand';
             });
 
             // 键盘切换功能
             const keyboardTabs = document.querySelectorAll('.keyboard-tab');
             const keyboards = document.querySelectorAll('.keyboard');
-
             keyboardTabs.forEach(tab => {
                 tab.addEventListener('click', function() {
                     keyboardTabs.forEach(t => t.classList.remove('active'));
                     keyboards.forEach(k => k.classList.remove('active'));
-                    
                     this.classList.add('active');
-                    const keyboardId = this.dataset.keyboard + '-keyboard';
-                    document.getElementById(keyboardId).classList.add('active');
+                    document.getElementById(this.dataset.keyboard + '-keyboard').classList.add('active');
                 });
             });
 
-            // 虚拟键盘功能
-                        // 新增一个 data-key 到 event.code 的映射表
+            // --- 关键修改：键盘事件处理核心 ---
+
+            const keyCodeMap = { 'Escape': 27, 'Enter': 13, 'Backspace': 8, 'ArrowUp': 38, 'ArrowDown': 40, 'ArrowLeft': 37, 'ArrowRight': 39, ' ': 32, ',': 188, '.': 190 };
+            
+            // 关键新增：data-key到event.code的映射，确保全键盘工作正常
             const keyToCodeMap = {
-                'Escape': 'Escape',
-                'Enter': 'Enter',
-                'Backspace': 'Backspace',
-                'ArrowUp': 'ArrowUp',
-                'ArrowDown': 'ArrowDown',
-                'ArrowLeft': 'ArrowLeft',
-                'ArrowRight': 'ArrowRight',
-                ' ': 'Space',
-                ',': 'Comma',
-                '.': 'Period',
-                // 数字键
-                '1': 'Digit1', '2': 'Digit2', '3': 'Digit3', '4': 'Digit4', '5': 'Digit5',
-                '6': 'Digit6', '7': 'Digit7', '8': 'Digit8', '9': 'Digit9', '0': 'Digit0',
-                // 字母键 (data-key是小写)
-                'a': 'KeyA', 'b': 'KeyB', 'c': 'KeyC', 'd': 'KeyD', 'e': 'KeyE', 'f': 'KeyF',
-                'g': 'KeyG', 'h': 'KeyH', 'i': 'KeyI', 'j': 'KeyJ', 'k': 'KeyK', 'l': 'KeyL',
-                'm': 'KeyM', 'n': 'KeyN', 'o': 'KeyO', 'p': 'KeyP', 'q': 'KeyQ', 'r': 'KeyR',
-                's': 'KeyS', 't': 'KeyT', 'u': 'KeyU', 'v': 'KeyV', 'w': 'KeyW', 'x': 'KeyX',
-                'y': 'KeyY', 'z': 'KeyZ'
+                'Escape': 'Escape', 'Enter': 'Enter', 'Backspace': 'Backspace', 'ArrowUp': 'ArrowUp', 'ArrowDown': 'ArrowDown', 'ArrowLeft': 'ArrowLeft', 'ArrowRight': 'ArrowRight', ' ': 'Space', ',': 'Comma', '.': 'Period',
+                '1': 'Digit1', '2': 'Digit2', '3': 'Digit3', '4': 'Digit4', '5': 'Digit5', '6': 'Digit6', '7': 'Digit7', '8': 'Digit8', '9': 'Digit9', '0': 'Digit0',
+                'a': 'KeyA', 'b': 'KeyB', 'c': 'KeyC', 'd': 'KeyD', 'e': 'KeyE', 'f': 'KeyF', 'g': 'KeyG', 'h': 'KeyH', 'i': 'KeyI', 'j': 'KeyJ', 'k': 'KeyK', 'l': 'KeyL', 'm': 'KeyM', 'n': 'KeyN', 'o': 'KeyO', 'p': 'KeyP', 'q': 'KeyQ', 'r': 'KeyR', 's': 'KeyS', 't': 'KeyT', 'u': 'KeyU', 'v': 'KeyV', 'w': 'KeyW', 'x': 'KeyX', 'y': 'KeyY', 'z': 'KeyZ'
             };
 
-
-                        function simulateKeyDown(key) {
-                // 如果虚拟键盘被禁用，不发送事件
-                if (!virtualKeyboardEnabled) {
-                    return;
-                }
-                
-                let keyCode = keyCodeMap[key] || key.toUpperCase().charCodeAt(0);
-                // 使用新的映射表查找正确的 code 值，如果找不到则回退到 key 本身
+            // 统一的按键事件模拟函数
+            function simulateKeyEvent(type, key) {
+                let keyCode = keyCodeMap[key] || (key.length === 1 ? key.toUpperCase().charCodeAt(0) : 0);
                 let code = keyToCodeMap[key] || key;
                 
-                const event = new KeyboardEvent('keydown', {
+                const event = new KeyboardEvent(type, {
                     key: key,
-                    code: code, // 使用正确的 code 值
+                    code: code,
                     keyCode: keyCode,
                     which: keyCode,
                     bubbles: true,
                     cancelable: true
                 });
                 
+                // 将事件派发到 canvas，因为 Emscripten/SDL 主要监听它
                 canvas.dispatchEvent(event);
-                document.dispatchEvent(event);
             }
 
-            function simulateKeyUp(key) {
-                // 如果虚拟键盘被禁用，不发送事件
-                if (!virtualKeyboardEnabled) {
+            // --- 物理键盘处理 ---
+            document.addEventListener('keydown', function(event) {
+                const activeElement = document.activeElement;
+                if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
+                    return; // 在输入框中，不拦截按键
+                }
+                
+                // 只处理我们映射表中有的键，或常见的控制键
+                const key = event.key;
+                if (keyToCodeMap[key.toLowerCase()] || keyToCodeMap[key]) {
+                    event.preventDefault();
+                    if (!event.repeat) {
+                        simulateKeyEvent('keydown', key);
+                        console.log(`Physical KeyDown: ${key}`);
+                    }
+                }
+            });
+
+            document.addEventListener('keyup', function(event) {
+                const activeElement = document.activeElement;
+                if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
                     return;
                 }
                 
-                let keyCode = keyCodeMap[key] || key.toUpperCase().charCodeAt(0);
-                // 使用新的映射表查找正确的 code 值，如果找不到则回退到 key 本身
-                let code = keyToCodeMap[key] || key;
-                
-                const event = new KeyboardEvent('keyup', {
-                    key: key,
-                    code: code, // 使用正确的 code 值
-                    keyCode: keyCode,
-                    which: keyCode,
-                    bubbles: true,
-                    cancelable: true
-                });
-                
-                canvas.dispatchEvent(event);
-                document.dispatchEvent(event);
-            }
+                const key = event.key;
+                if (keyToCodeMap[key.toLowerCase()] || keyToCodeMap[key]) {
+                    event.preventDefault();
+                    simulateKeyEvent('keyup', key);
+                    console.log(`Physical KeyUp: ${key}`);
+                }
+            });
 
 
-            // 跟踪当前按下的按键（用于长按功能）
+            // --- 虚拟键盘处理 ---
             let currentPressedKey = null;
             let pressInterval = null;
             let pressTimeout = null;
-            let virtualKeyboardEnabled = true;
 
-            // 为所有按键添加事件监听
+            function handlePress(element) {
+                const keyValue = element.dataset.key;
+                if (!keyValue) return;
+
+                // 立即触发一次 keydown
+                simulateKeyEvent('keydown', keyValue);
+                console.log('Virtual KeyDown:', keyValue);
+                
+                // 添加视觉反馈
+                element.style.background = '#667eea';
+                element.style.color = 'white';
+                
+                currentPressedKey = { key: keyValue, element: element };
+                
+                // 仅对方向键启用长按重复
+                if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(keyValue)) {
+                    pressTimeout = setTimeout(() => {
+                        pressInterval = setInterval(() => {
+                            if (currentPressedKey && currentPressedKey.key === keyValue) {
+                                simulateKeyEvent('keydown', keyValue);
+                            }
+                        }, 100);
+                    }, 400);
+                }
+            }
+
+            function handleRelease(element) {
+                if (!currentPressedKey || currentPressedKey.element !== element) return;
+
+                const keyValue = currentPressedKey.key;
+                simulateKeyEvent('keyup', keyValue);
+                console.log('Virtual KeyUp:', keyValue);
+                
+                clearTimeout(pressTimeout);
+                clearInterval(pressInterval);
+                pressTimeout = null;
+                pressInterval = null;
+                
+                element.style.background = '';
+                element.style.color = '';
+                
+                currentPressedKey = null;
+            }
+
             document.querySelectorAll('.key, .arrow-key, .side-key').forEach(keyElement => {
                 // 鼠标事件
-                keyElement.addEventListener('mousedown', function(e) {
-                    e.preventDefault();
-                    const keyValue = this.dataset.key;
-                    
-                    // 立即触发一次 keydown
-                    console.log('Key down:', keyValue);
-                    simulateKeyDown(keyValue);
-                    
-                    // 添加视觉反馈
-                    this.style.background = '#667eea';
-                    this.style.color = 'white';
-                    
-                    // 保存当前按键
-                    currentPressedKey = {
-                        key: keyValue,
-                        element: this
-                    };
-                    
-                    // 延迟后开始长按重复（仅对方向键）
-                    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(keyValue)) {
-                        pressTimeout = setTimeout(() => {
-                            if (currentPressedKey) {
-                                pressInterval = setInterval(() => {
-                                    if (currentPressedKey) {
-                                        simulateKeyDown(keyValue);
-                                    }
-                                }, 100); // 每100ms重复一次
-                            }
-                        }, 400); // 400ms后开始重复
-                    }
-                });
-
-                keyElement.addEventListener('mouseup', function(e) {
-                    e.preventDefault();
-                    
-                    if (currentPressedKey && currentPressedKey.element === this) {
-                        const keyValue = currentPressedKey.key;
-                        
-                        // 发送 keyup 事件
-                        console.log('Key up:', keyValue);
-                        simulateKeyUp(keyValue);
-                        
-                        // 清除长按
-                        if (pressTimeout) {
-                            clearTimeout(pressTimeout);
-                            pressTimeout = null;
-                        }
-                        if (pressInterval) {
-                            clearInterval(pressInterval);
-                            pressInterval = null;
-                        }
-                        
-                        currentPressedKey = null;
-                    }
-                    
-                    // 恢复样式
-                    this.style.background = '';
-                    this.style.color = '';
-                });
-
-                keyElement.addEventListener('mouseleave', function(e) {
-                    // 鼠标离开按键时，如果是当前按下的按键，则释放
-                    if (currentPressedKey && currentPressedKey.element === this) {
-                        const keyValue = currentPressedKey.key;
-                        simulateKeyUp(keyValue);
-                        
-                        if (pressTimeout) {
-                            clearTimeout(pressTimeout);
-                            pressTimeout = null;
-                        }
-                        if (pressInterval) {
-                            clearInterval(pressInterval);
-                            pressInterval = null;
-                        }
-                        
-                        currentPressedKey = null;
-                        this.style.background = '';
-                        this.style.color = '';
-                    }
-                });
-
-                // 触摸事件（移动端）
-                keyElement.addEventListener('touchstart', function(e) {
-                    e.preventDefault();
-                    const keyValue = this.dataset.key;
-                    
-                    console.log('Touch start:', keyValue);
-                    simulateKeyDown(keyValue);
-                    
-                    this.style.background = '#667eea';
-                    this.style.color = 'white';
-                    
-                    currentPressedKey = {
-                        key: keyValue,
-                        element: this
-                    };
-                    
-                    // 方向键支持长按
-                    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(keyValue)) {
-                        pressTimeout = setTimeout(() => {
-                            if (currentPressedKey) {
-                                pressInterval = setInterval(() => {
-                                    if (currentPressedKey) {
-                                        simulateKeyDown(keyValue);
-                                    }
-                                }, 100);
-                            }
-                        }, 400);
-                    }
-                });
-
-                keyElement.addEventListener('touchend', function(e) {
-                    e.preventDefault();
-                    
-                    if (currentPressedKey && currentPressedKey.element === this) {
-                        const keyValue = currentPressedKey.key;
-                        
-                        console.log('Touch end:', keyValue);
-                        simulateKeyUp(keyValue);
-                        
-                        if (pressTimeout) {
-                            clearTimeout(pressTimeout);
-                            pressTimeout = null;
-                        }
-                        if (pressInterval) {
-                            clearInterval(pressInterval);
-                            pressInterval = null;
-                        }
-                        
-                        currentPressedKey = null;
-                    }
-                    
-                    this.style.background = '';
-                    this.style.color = '';
-                });
-
-                keyElement.addEventListener('touchcancel', function(e) {
-                    e.preventDefault();
-                    
-                    if (currentPressedKey && currentPressedKey.element === this) {
-                        const keyValue = currentPressedKey.key;
-                        simulateKeyUp(keyValue);
-                        
-                        if (pressTimeout) {
-                            clearTimeout(pressTimeout);
-                            pressTimeout = null;
-                        }
-                        if (pressInterval) {
-                            clearInterval(pressInterval);
-                            pressInterval = null;
-                        }
-                        
-                        currentPressedKey = null;
-                    }
-                    
-                    this.style.background = '';
-                    this.style.color = '';
-                });
+                keyElement.addEventListener('mousedown', (e) => { e.preventDefault(); handlePress(keyElement); });
+                keyElement.addEventListener('mouseup', (e) => { e.preventDefault(); handleRelease(keyElement); });
+                keyElement.addEventListener('mouseleave', (e) => { e.preventDefault(); handleRelease(keyElement); });
+                // 触摸事件
+                keyElement.addEventListener('touchstart', (e) => { e.preventDefault(); handlePress(keyElement); });
+                keyElement.addEventListener('touchend', (e) => { e.preventDefault(); handleRelease(keyElement); });
+                keyElement.addEventListener('touchcancel', (e) => { e.preventDefault(); handleRelease(keyElement); });
             });
 
-            // 全局鼠标/触摸释放，确保在任何情况下都能释放按键
-            document.addEventListener('mouseup', function() {
-                if (currentPressedKey) {
-                    simulateKeyUp(currentPressedKey.key);
-                    currentPressedKey.element.style.background = '';
-                    currentPressedKey.element.style.color = '';
-                    currentPressedKey = null;
-                    
-                    if (pressTimeout) {
-                        clearTimeout(pressTimeout);
-                        pressTimeout = null;
-                    }
-                    if (pressInterval) {
-                        clearInterval(pressInterval);
-                        pressInterval = null;
-                    }
-                }
-            });
+            // 全局释放，防止按键卡住
+            document.addEventListener('mouseup', () => { if (currentPressedKey) handleRelease(currentPressedKey.element); });
 
-            document.addEventListener('touchend', function() {
-                if (currentPressedKey) {
-                    simulateKeyUp(currentPressedKey.key);
-                    currentPressedKey.element.style.background = '';
-                    currentPressedKey.element.style.color = '';
-                    currentPressedKey = null;
-                    
-                    if (pressTimeout) {
-                        clearTimeout(pressTimeout);
-                        pressTimeout = null;
-                    }
-                    if (pressInterval) {
-                        clearInterval(pressInterval);
-                        pressInterval = null;
-                    }
-                }
-            });
-
-            /* --- START: 新增的物理键盘处理代码 --- */
-
-// 添加对物理键盘的支持
-document.addEventListener('keydown', function(event) {
-    // 如果当前焦点在任何 <input> 或 <textarea> 元素上，则不处理，让用户可以正常打字。
-    const activeElement = document.activeElement;
-    if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
-        return;
-    }
-
-    // 防止按键的默认浏览器行为，例如按方向键时滚动页面。
-    event.preventDefault();
-
-    // 为了防止按键按住不放时持续触发事件导致性能问题或逻辑错误，
-    // 我们只在第一次按下时模拟事件。
-    if (event.repeat) {
-        return;
-    }
-    
-    // 使用您现有的函数来模拟按键按下事件
-    simulateKeyDown(event.key);
-    console.log(`Physical KeyDown forwarded: ${event.key}`);
-});
-
-document.addEventListener('keyup', function(event) {
-    // 同样，检查焦点是否在输入框上
-    const activeElement = document.activeElement;
-    if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
-        return;
-    }
-
-    event.preventDefault();
-    
-    // 使用您现有的函数来模拟按键抬起事件
-    simulateKeyUp(event.key);
-    console.log(`Physical KeyUp forwarded: ${event.key}`);
-});
-
-/* --- END: 新增的物理键盘处理代码 --- */
-
-
-            // 控制面板功能
-            const binPathInput = document.getElementById('bin-path');
-            const screenWidthInput = document.getElementById('screen-width');
-            const screenHeightInput = document.getElementById('screen-height');
-            const modelTypeInput = document.getElementById('model-type');
-            const speedSlider = document.getElementById('speed-slider');
-            const speedValue = document.getElementById('speed-value');
+            // --- 控制面板功能 ---
             const loadBinButton = document.getElementById('load-bin-button');
-
-            // 所有输入框
-            const allInputs = [binPathInput, screenWidthInput, screenHeightInput, modelTypeInput];
-
-            // 当输入框获得焦点时，禁用虚拟键盘
-            allInputs.forEach(input => {
-                input.addEventListener('focus', function() {
-                    virtualKeyboardEnabled = false;
-                    console.log('Virtual keyboard disabled - input focused');
-                });
-                
-                input.addEventListener('blur', function() {
-                    virtualKeyboardEnabled = true;
-                    console.log('Virtual keyboard enabled - input blurred');
-                });
-            });
-
-            // 更新速度显示
-            speedSlider.addEventListener('input', function() {
-                const speed = this.value;
-                speedValue.textContent = speed + ' Hz';
-                if (Module._set_vm_clock_speed) {
-                    Module._set_vm_clock_speed(parseInt(speed));
-                }
-            });
-
-            // 加载bin文件
             loadBinButton.addEventListener('click', function() {
                 if (!Module.ccall) {
                     alert('Module is still loading, please wait...');
                     return;
                 }
 
-                const binPath = binPathInput.value.trim();
-                const modelType = modelTypeInput.value.trim();
-                const width = parseInt(screenWidthInput.value) || 240;
-                const height = parseInt(screenHeightInput.value) || 320;
+                const binPath = document.getElementById('bin-path').value.trim();
+                const modelType = document.getElementById('model-type').value.trim();
+                const width = parseInt(document.getElementById('screen-width').value) || 240;
+                const height = parseInt(document.getElementById('screen-height').value) || 320;
                 
                 if (!binPath) {
                     alert('Please enter a bin file path');
-                    return;
-                }
-                
-                if (width < 100 || width > 2000 || height < 100 || height > 2000) {
-                    alert('Screen size must be between 100x100 and 2000x2000');
                     return;
                 }
                 
@@ -1213,25 +966,13 @@ document.addEventListener('keyup', function(event) {
                 
                 setTimeout(() => {
                     try {
-                        const result = Module.ccall(
-                            'load_and_run_bin',
-                            'number',
-                            ['string', 'number', 'number', 'string'],
-                            [binPath, width, height, modelType || '']
-                        );
-                        
+                        const result = Module.ccall('load_and_run_bin', 'number', ['string', 'number', 'number', 'string'], [binPath, width, height, modelType || '']);
                         if (result === 0) {
-                            Module.print('✅ Successfully loaded: ' + binPath);
-                            Module.print('📐 Screen size: ' + width + 'x' + height);
-                            
+                            Module.print(`✅ Successfully loaded: ${binPath}\n📐 Screen size: ${width}x${height}`);
                             const scale = zoomSlider.value / 100;
-                            const scaledHeight = height * scale;
-                            canvasContainer.style.minHeight = scaledHeight + 'px';
-                        } else if (result === -2) {
-                            Module.print('❌ Failed to reinitialize SDL window');
-                            alert('Failed to set window size. Check console for details.');
+                            canvasContainer.style.minHeight = (height * scale) + 'px';
                         } else {
-                            Module.print('❌ Failed to load: ' + binPath);
+                            Module.print(`❌ Failed to load: ${binPath} (code: ${result})`);
                             alert('Failed to load bin file. Check console for details.');
                         }
                     } catch (error) {
@@ -1243,7 +984,18 @@ document.addEventListener('keyup', function(event) {
                     loadBinButton.textContent = 'Load and Run Bin File';
                 }, 100);
             });
+
+             // 更新速度显示
+            const speedSlider = document.getElementById('speed-slider');
+            speedSlider.addEventListener('input', function() {
+                const speed = this.value;
+                document.getElementById('speed-value').textContent = speed + ' Hz';
+                if (Module._set_vm_clock_speed) {
+                    Module._set_vm_clock_speed(parseInt(speed));
+                }
+            });
         });
     </script>
 </body>
 </html>
+
