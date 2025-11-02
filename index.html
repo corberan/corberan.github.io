@@ -834,30 +834,43 @@
             });
 
             // 虚拟键盘功能
-            const keyCodeMap = {
-                'Escape': 27,
-                'Enter': 13,
-                'Backspace': 8,
-                'ArrowUp': 38,
-                'ArrowDown': 40,
-                'ArrowLeft': 37,
-                'ArrowRight': 39,
-                ' ': 32,
-                ',': 188,
-                '.': 190
+                        // 新增一个 data-key 到 event.code 的映射表
+            const keyToCodeMap = {
+                'Escape': 'Escape',
+                'Enter': 'Enter',
+                'Backspace': 'Backspace',
+                'ArrowUp': 'ArrowUp',
+                'ArrowDown': 'ArrowDown',
+                'ArrowLeft': 'ArrowLeft',
+                'ArrowRight': 'ArrowRight',
+                ' ': 'Space',
+                ',': 'Comma',
+                '.': 'Period',
+                // 数字键
+                '1': 'Digit1', '2': 'Digit2', '3': 'Digit3', '4': 'Digit4', '5': 'Digit5',
+                '6': 'Digit6', '7': 'Digit7', '8': 'Digit8', '9': 'Digit9', '0': 'Digit0',
+                // 字母键 (data-key是小写)
+                'a': 'KeyA', 'b': 'KeyB', 'c': 'KeyC', 'd': 'KeyD', 'e': 'KeyE', 'f': 'KeyF',
+                'g': 'KeyG', 'h': 'KeyH', 'i': 'KeyI', 'j': 'KeyJ', 'k': 'KeyK', 'l': 'KeyL',
+                'm': 'KeyM', 'n': 'KeyN', 'o': 'KeyO', 'p': 'KeyP', 'q': 'KeyQ', 'r': 'KeyR',
+                's': 'KeyS', 't': 'KeyT', 'u': 'KeyU', 'v': 'KeyV', 'w': 'KeyW', 'x': 'KeyX',
+                'y': 'KeyY', 'z': 'KeyZ'
             };
 
-            function simulateKeyDown(key) {
+
+                        function simulateKeyDown(key) {
                 // 如果虚拟键盘被禁用，不发送事件
                 if (!virtualKeyboardEnabled) {
                     return;
                 }
                 
                 let keyCode = keyCodeMap[key] || key.toUpperCase().charCodeAt(0);
+                // 使用新的映射表查找正确的 code 值，如果找不到则回退到 key 本身
+                let code = keyToCodeMap[key] || key;
                 
                 const event = new KeyboardEvent('keydown', {
                     key: key,
-                    code: key,
+                    code: code, // 使用正确的 code 值
                     keyCode: keyCode,
                     which: keyCode,
                     bubbles: true,
@@ -875,10 +888,12 @@
                 }
                 
                 let keyCode = keyCodeMap[key] || key.toUpperCase().charCodeAt(0);
+                // 使用新的映射表查找正确的 code 值，如果找不到则回退到 key 本身
+                let code = keyToCodeMap[key] || key;
                 
                 const event = new KeyboardEvent('keyup', {
                     key: key,
-                    code: key,
+                    code: code, // 使用正确的 code 值
                     keyCode: keyCode,
                     which: keyCode,
                     bubbles: true,
@@ -888,6 +903,7 @@
                 canvas.dispatchEvent(event);
                 document.dispatchEvent(event);
             }
+
 
             // 跟踪当前按下的按键（用于长按功能）
             let currentPressedKey = null;
@@ -1094,6 +1110,47 @@
                     }
                 }
             });
+
+            /* --- START: 新增的物理键盘处理代码 --- */
+
+// 添加对物理键盘的支持
+document.addEventListener('keydown', function(event) {
+    // 如果当前焦点在任何 <input> 或 <textarea> 元素上，则不处理，让用户可以正常打字。
+    const activeElement = document.activeElement;
+    if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
+        return;
+    }
+
+    // 防止按键的默认浏览器行为，例如按方向键时滚动页面。
+    event.preventDefault();
+
+    // 为了防止按键按住不放时持续触发事件导致性能问题或逻辑错误，
+    // 我们只在第一次按下时模拟事件。
+    if (event.repeat) {
+        return;
+    }
+    
+    // 使用您现有的函数来模拟按键按下事件
+    simulateKeyDown(event.key);
+    console.log(`Physical KeyDown forwarded: ${event.key}`);
+});
+
+document.addEventListener('keyup', function(event) {
+    // 同样，检查焦点是否在输入框上
+    const activeElement = document.activeElement;
+    if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
+        return;
+    }
+
+    event.preventDefault();
+    
+    // 使用您现有的函数来模拟按键抬起事件
+    simulateKeyUp(event.key);
+    console.log(`Physical KeyUp forwarded: ${event.key}`);
+});
+
+/* --- END: 新增的物理键盘处理代码 --- */
+
 
             // 控制面板功能
             const binPathInput = document.getElementById('bin-path');
