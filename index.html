@@ -848,37 +848,42 @@
             }
 
             // --- 物理键盘处理 ---
-            document.addEventListener('keydown', function(event) {
+            function handlePhysicalKey(event, type) {
                 const activeElement = document.activeElement;
-                if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
-                    return; // 在输入框中，不拦截按键
-                }
+                const isTyping = activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA');
                 
-                // 只处理我们映射表中有的键，或常见的控制键
+                // 查找按键是否在我们的映射表中
+                // 注意：对于字母键，event.key 是区分大小写的，但我们的映射表 key 是小写
                 const key = event.key;
-                if (keyToCodeMap[key.toLowerCase()] || keyToCodeMap[key]) {
-                    event.preventDefault();
-                    if (!event.repeat) {
+                const lowerKey = key.toLowerCase();
+                const isVmKey = keyToCodeMap[key] || keyToCodeMap[lowerKey];
+
+                // 核心逻辑：只有当按键是虚拟机需要的，并且用户当前没有在输入框里打字时，
+                // 我们才拦截事件并发送给虚拟机。
+                if (isVmKey && !isTyping) {
+                    event.preventDefault(); // 阻止如方向键滚动页面等默认行为
+                    
+                    // 对于keydown，只在第一次按下时发送，避免系统级的按键重复
+                    if (type === 'keydown' && !event.repeat) {
+                         // 使用 event.key (例如 'a' or 'A') or a mapped key (例如 'ArrowUp')
                         simulateKeyEvent('keydown', key);
-                        console.log(`Physical KeyDown: ${key}`);
+                        console.log(`Physical KeyDown to VM: ${key}`);
+                    } else if (type === 'keyup') {
+                        simulateKeyEvent('keyup', key);
+                        console.log(`Physical KeyUp to VM: ${key}`);
                     }
                 }
+                // 其他所有情况（在输入框打字，或按下了F5等无关按键），我们什么都不做，
+                // 让浏览器执行默认操作。
+            }
+
+            document.addEventListener('keydown', function(event) {
+                handlePhysicalKey(event, 'keydown');
             });
 
             document.addEventListener('keyup', function(event) {
-                const activeElement = document.activeElement;
-                if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
-                    return;
-                }
-                
-                const key = event.key;
-                if (keyToCodeMap[key.toLowerCase()] || keyToCodeMap[key]) {
-                    event.preventDefault();
-                    simulateKeyEvent('keyup', key);
-                    console.log(`Physical KeyUp: ${key}`);
-                }
+                handlePhysicalKey(event, 'keyup');
             });
-
 
             // --- 虚拟键盘处理 ---
             let currentPressedKey = null;
