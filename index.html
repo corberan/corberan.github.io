@@ -848,42 +848,42 @@
             }
 
             // --- 物理键盘处理 ---
-            function handlePhysicalKey(event, type) {
-                const activeElement = document.activeElement;
-                const isTyping = activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA');
+            // function handlePhysicalKey(event, type) {
+            //     const activeElement = document.activeElement;
+            //     const isTyping = activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA');
                 
-                // 查找按键是否在我们的映射表中
-                // 注意：对于字母键，event.key 是区分大小写的，但我们的映射表 key 是小写
-                const key = event.key;
-                const lowerKey = key.toLowerCase();
-                const isVmKey = keyToCodeMap[key] || keyToCodeMap[lowerKey];
+            //     // 查找按键是否在我们的映射表中
+            //     // 注意：对于字母键，event.key 是区分大小写的，但我们的映射表 key 是小写
+            //     const key = event.key;
+            //     const lowerKey = key.toLowerCase();
+            //     const isVmKey = keyToCodeMap[key] || keyToCodeMap[lowerKey];
 
-                // 核心逻辑：只有当按键是虚拟机需要的，并且用户当前没有在输入框里打字时，
-                // 我们才拦截事件并发送给虚拟机。
-                if (isVmKey && !isTyping) {
-                    event.preventDefault(); // 阻止如方向键滚动页面等默认行为
+            //     // 核心逻辑：只有当按键是虚拟机需要的，并且用户当前没有在输入框里打字时，
+            //     // 我们才拦截事件并发送给虚拟机。
+            //     if (isVmKey && !isTyping) {
+            //         event.preventDefault(); // 阻止如方向键滚动页面等默认行为
                     
-                    // 对于keydown，只在第一次按下时发送，避免系统级的按键重复
-                    if (type === 'keydown' && !event.repeat) {
-                         // 使用 event.key (例如 'a' or 'A') or a mapped key (例如 'ArrowUp')
-                        simulateKeyEvent('keydown', key);
-                        console.log(`Physical KeyDown to VM: ${key}`);
-                    } else if (type === 'keyup') {
-                        simulateKeyEvent('keyup', key);
-                        console.log(`Physical KeyUp to VM: ${key}`);
-                    }
-                }
-                // 其他所有情况（在输入框打字，或按下了F5等无关按键），我们什么都不做，
-                // 让浏览器执行默认操作。
-            }
+            //         // 对于keydown，只在第一次按下时发送，避免系统级的按键重复
+            //         if (type === 'keydown' && !event.repeat) {
+            //              // 使用 event.key (例如 'a' or 'A') or a mapped key (例如 'ArrowUp')
+            //             simulateKeyEvent('keydown', key);
+            //             console.log(`Physical KeyDown to VM: ${key}`);
+            //         } else if (type === 'keyup') {
+            //             simulateKeyEvent('keyup', key);
+            //             console.log(`Physical KeyUp to VM: ${key}`);
+            //         }
+            //     }
+            //     // 其他所有情况（在输入框打字，或按下了F5等无关按键），我们什么都不做，
+            //     // 让浏览器执行默认操作。
+            // }
 
-            document.addEventListener('keydown', function(event) {
-                handlePhysicalKey(event, 'keydown');
-            });
+            // document.addEventListener('keydown', function(event) {
+            //     handlePhysicalKey(event, 'keydown');
+            // });
 
-            document.addEventListener('keyup', function(event) {
-                handlePhysicalKey(event, 'keyup');
-            });
+            // document.addEventListener('keyup', function(event) {
+            //     handlePhysicalKey(event, 'keyup');
+            // });
 
             // --- 虚拟键盘处理 ---
             let currentPressedKey = null;
@@ -1003,4 +1003,3 @@
     </script>
 </body>
 </html>
-
